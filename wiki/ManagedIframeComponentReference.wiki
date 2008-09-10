@@ -1,0 +1,16 @@
+#summary Component Reference
+
+ UsingManagedIFrame
+ [[ManageIframe:Manual:Frame_Methods|ManagedIFrame Properties and Methods]]
+ [[ManageIframe:Manual:Frame_Loading|Loading your ManagedIFrame]]
+ [[ManageIframe:Manual:Frame_Security|ManagedIFrame and Same-domain Frame access]]
+ [[ManageIframe:Manual:Frame_Updating|UpdateManager and ManagedIFrame]]
+ [[ManageIframe:Manual:Frame_Scripting|Scripting your ManagedIFrame]]
+ [[ManageIframe:Manual:Frame_Queries|Ext.Element, CSS Selector Queries, and Event Management (1.1+)]]
+ [[ManageIframe:Manual:Frame_Messaging|Cross-frame messaging with ManagedIFrame]]
+ [[ManageIframe:Manual:Frame_Panel|ManagedIFramePanel and Layouts]]
+ [[ManageIframe:Manual:Frame_HTTPS|HTTPS and ManagedIFrame]]
+ [[ManageIframe:Manual:Frame_FAQ|FAQ]]
+
+ [[ManageIframe:Examples:examples_basic|Basic Examples]]
+ [[ManageIframe:Examples:examples_MIFP|Ext 2.0 Panel Examples]]
