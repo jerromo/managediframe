@@ -1,4 +1,4 @@
-#summary Frequently Asked Question regarding !ManagedIframe and !ManagedIframePanel
+#summary Frequently Asked Questions regarding !ManagedIframe and !ManagedIframePanel
 
 == How do I force a refresh of the currently loaded page within !MIF/MIFPanel==
 Calling the setSrc method of MIF or MIFP without specifying the first parameter, reloads the page with the last URL specified by the last setSrc method call or defaultSrc property.
