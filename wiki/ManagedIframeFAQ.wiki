@@ -41,7 +41,7 @@ Note: Anonymous Function declarations are not resolvable by the window object wh
 var fn = function(arg){ arg++; };
 }}} 
 
-==Why do IFRAMEs appear to reload again after being hidden or resized with FireFox?==
+==Why do IFRAMEs appear to reload again after being hidden or resized with !FireFox ?==
 !FireFox, and several others (Except Internet Explorer), reload IFRAME content any time the IFRAME (or an upstream containing Element) is hidden using style:display:none or when its style:position attribute changes.  This is particularly evident when used within Ext.TabPanels as the default hide method for all Ext Components is display:none, which sets the Panel width and height to zero(0).  To avoid this behavior in releases prior to 1.05, change your Panels hideMode and position attributes to 'visibility'(or offsets) and 'absolute' respectively in your TabPanel item defaults:
 {{{
  defaults:{
