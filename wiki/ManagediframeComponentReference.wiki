@@ -1,6 +1,6 @@
 #summary Component Reference
 
- [Using ManagedIFrame]
+ UsingManagedIFrame
  [[ManageIframe:Manual:Frame_Methods|ManagedIFrame Properties and Methods]]
  [[ManageIframe:Manual:Frame_Loading|Loading your ManagedIFrame]]
  [[ManageIframe:Manual:Frame_Security|ManagedIFrame and Same-domain Frame access]]
