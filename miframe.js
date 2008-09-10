@@ -1,5 +1,10 @@
 /* global Ext */
-/************************************************************************************
+/* @class Ext.ux.ManagedIFrame
+ * Version:  1.2
+ * Author: Doug Hendricks. doug[always-At]theactivegroup.com
+ * Copyright 2007-2008, Active Group, Inc.  All rights reserved.
+ *
+ ************************************************************************************
  *   This file is distributed on an AS IS BASIS WITHOUT ANY WARRANTY;
  *   without even the implied warranty of MERCHANTABILITY or
  *   FITNESS FOR A PARTICULAR PURPOSE.
@@ -38,35 +43,14 @@
    * // overwritten after each call to the update method, and no styleSheets.
   * </code></pre>
   * <br>
-  * @class Ext.ux.ManagedIFrame
-  * @extends Ext.Element
-  * @extends Ext.util.Observable
-  * @version:  1.2
-  * @license <a href="http://www.gnu.org/licenses/lgpl.html">LGPL 3.0</a>
-  * @author: Doug Hendricks. Forum ID: <a href="http://extjs.com/forum/member.php?u=8730">hendricd</a>
-  * Copyright 2007-2008, Active Group, Inc.  All rights reserved.
-  *
-  * @cfg {Boolean/Object} autoCreate True to auto generate the IFRAME element, or a {@link Ext.DomHelper} config of the IFRAME to create
-  * @cfg {String} html Any markup to be applied to the IFRAME's document content when rendered.
-  * @cfg {Object} loadMask An {@link Ext.LoadMask} config or true to mask the iframe while using the update or setSrc methods (defaults to false).
-  * @cfg {Object} src  The src attribute to be assigned to the Iframe after initialization (overrides the autoCreate config src attribute)
-  * @constructor
+   * @cfg {Boolean/Object} autoCreate True to auto generate the IFRAME element, or a {@link Ext.DomHelper} config of the IFRAME to create
+   * @cfg {String} html Any markup to be applied to the IFRAME's document content when rendered.
+   * @cfg {Object} loadMask An {@link Ext.LoadMask} config or true to mask the iframe while using the update or setSrc methods (defaults to false).
+   * @cfg {Object} src  The src attribute to be assigned to the Iframe after initialization (overrides the autoCreate config src attribute)
+   * @constructor
   * @param {Mixed} el, Config object The iframe element or it's id to harness or a valid config object.
 
- * Release: 1.2.1( 9/9/2008) Mod: Improved domready detection for Opera, Webkit, and IE.
-                             jsDOC updates.
-                             Mod: MIFP frameConfig now honors either
-                                frameConfig: {id:'someId': name:'someName',....} or
-                                frameConfig: {autoCreate:{ id:'someId': name:'someName',....}}
-                             Add: resetUrl class property to override the reset URL used by default
-                                with the reset method.
-                             Add: (MIF/MIFP):setLocation method. Identical to setSrc, but uses location.replace
-                                on the frame instead, preventing a History update.
-                             Add: scope parameter to all methods supporting callbacks
-                             Mod: callbacks are invoke as soon as domready status is detected.
-
-
-            1.2  (8/22/2008) FF3 Compatibility Fixes, loadMask tweaks
+ * Release: 1.2  (8/22/2008) FF3 Compatibility Fixes, loadMask tweaks
 
             1.1  (4/13/2008) Adds Ext.Element, CSS Selectors (query,select) fly, and CSS
                                     interface support (same-domain only)
@@ -89,17 +73,8 @@ Ext.ux.ManagedIFrame = function(){
             config = args[0] || args[1] || {};
 
             el = config.autoCreate?
-            Ext.get(Ext.DomHelper.append(config.autoCreate.parent||Ext.getBody(),
-                Ext.apply({
-                    tag          :'iframe',
-                    frameborder  : 1,
-                    html         : 'Inline frames are NOT enabled\/supported by your browser.',
-                    src:(Ext.isIE&&Ext.isSecure)?Ext.SSL_SECURE_URL:'about:blank'
-                    }
-                    ,config.autoCreate
-                    ,Ext.isIE ?{onload : 'Ext.ux.ManagedIFrame.Manager.IEloadHandler()'}:false
-                 )
-            )):null;
+            Ext.get(Ext.DomHelper.append(config.autoCreate.parent||document.body,
+                Ext.apply({tag:'iframe', src:(Ext.isIE&&Ext.isSecure)?Ext.SSL_SECURE_URL:''},config.autoCreate))):null;
     }
 
     if(!el || el.dom.tagName != 'IFRAME') return el;
@@ -110,20 +85,19 @@ Ext.ux.ManagedIFrame = function(){
 
     this.addEvents({
         /**
+         * @event focus
          * Fires when the frame gets focus.
+         * @param {Ext.ux.ManagedIFrame} this
+         * @param {Ext.Event}
          * Note: This event is only available when overwriting the iframe document using the update method and to pages
          * retrieved from a "same domain".
          * Returning false from the eventHandler [MAY] NOT cancel the event, as this event is NOT ALWAYS cancellable in all browsers.
-         * @event focus
-         * @param {Ext.ux.ManagedIFrame} this
-         * @param {Ext.Event}
-
          */
         "focus"         : true,
 
         /**
-         * Fires when the frame is blurred (loses focus).
          * @event blur
+         * * Fires when the frame is blurred (loses focus).
          * @param {Ext.ux.ManagedIFrame} this
          * @param {Ext.Event}
          * Note: This event is only available when overwriting the iframe document using the update method and to pages
@@ -133,44 +107,43 @@ Ext.ux.ManagedIFrame = function(){
         "blur"          : true,
 
         /**
-         * Note: This event is only available when overwriting the iframe document using the update method and to pages
-         * retrieved from a "same domain".
-         * Note: Opera does not raise this event.
          * @event unload
          * * Fires when(if) the frames window object raises the unload event
          * @param {Ext.ux.ManagedIFrame} this
          * @param {Ext.Event}
+         * Note: This event is only available when overwriting the iframe document using the update method and to pages
+         * retrieved from a "same domain".
+         * Note: Opera does not raise this event.
          */
         "unload"        : true,
 
        /**
-         * Note: This event is only available when overwriting the iframe document using the update method and to pages
-         * retrieved from a "same domain".
-         * Returning false from the eventHandler stops further event (documentloaded) processing.
          * @event domready
          * Fires ONLY when an iFrame's Document(DOM) has reach a state where the DOM may be manipulated (ie same domain policy)
          * @param {Ext.ux.ManagedIFrame} this
+         * Note: This event is only available when overwriting the iframe document using the update method and to pages
+         * retrieved from a "same domain".
+         * Returning false from the eventHandler stops further event (documentloaded) processing.
          */
         "domready"       : true,
 
        /**
-         * Fires when the iFrame has reached a loaded/complete state.
          * @event documentloaded
+         * Fires when the iFrame has reached a loaded/complete state.
          * @param {Ext.ux.ManagedIFrame} this
          */
         "documentloaded" : true,
 
         /**
-         * Fires when the frame actions raise an error
          * @event exception
+         * Fires when the iFrame raises an error
          * @param {Ext.ux.ManagedIFrame} this
-         * @param {Error/string} exception
+         * @param {Object/string} exception
          */
         "exception" : true,
         /**
-* Fires upon receipt of a message generated by window.sendMessage method of the embedded Iframe.window object
          * @event message
-
+         * Fires upon receipt of a message generated by window.sendMessage method of the embedded Iframe.window object
          * @param {Ext.ux.ManagedIFrame} this
          * @param {object} message (members:  type: {string} literal "message",
          *                                    data {Mixed} [the message payload],
@@ -182,9 +155,9 @@ Ext.ux.ManagedIFrame = function(){
         "message" : true
         /**
          * Alternate event handler syntax for message:tag filtering
+         * @event message:tag
          * Fires upon receipt of a message generated by window.sendMessage method
          * which includes a specific tag value of the embedded Iframe.window object
-         * @event message:tag
          * @param {Ext.ux.ManagedIFrame} this
          * @param {object} message (members:  type: {string} literal "message",
          *                                    data {Mixed} [the message payload],
@@ -215,31 +188,32 @@ Ext.ux.ManagedIFrame = function(){
      ,loadMask         : Ext.apply({msg:'Loading..'
                             ,msgCls:'x-mask-loading'
                             ,maskEl: el._maskEl
-                            ,hideOnReady:false
+                            ,hideOnReady:true
                             ,disabled:!config.loadMask},config.loadMask)
-
+    //Hook the Iframes loaded state handler
+     ,_eventName       : Ext.isIE?'onreadystatechange':'onload'
      ,_windowContext   : null
      ,eventsFollowFrameLinks  : typeof config.eventsFollowFrameLinks=='undefined'?
                                 true  :  config.eventsFollowFrameLinks
     });
 
+    el.dom[el._eventName] = el.loadHandler.createDelegate(el);
+
     var um = el.updateManager=new Ext.UpdateManager(el,true);
     um.showLoadIndicator= config.showLoadIndicator || false;
-
-    Ext.ux.ManagedIFrame.Manager.register(el);
 
     if(config.src){
         el.setSrc(config.src);
     }else{
 
         var content = config.html || config.content || false;
-        //permit the syntax for supported arguments: content || [content, loadScripts, callback, scope]
+
         if(content){
-              el.update.apply(el,[].concat(content));
+            el.update.defer(10,el,[content]); //allow frame to quiesce
         }
     }
 
-    return el;
+    return Ext.ux.ManagedIFrame.Manager.register(el);
 
 };
 
@@ -252,7 +226,6 @@ var MIM = Ext.ux.ManagedIFrame.Manager = function(){
 
         try{
             var id =target?target.mifId:null, frame;
-
             if((frame = this.getFrameById(id || target.id)) && frame._frameAction){
                 frame.loadHandler({type:'domready'});
             }
@@ -262,31 +235,16 @@ var MIM = Ext.ux.ManagedIFrame.Manager = function(){
     };
 
   var implementation= {
-
-    IEloadHandler : function(e){
-        e || (e=event);
-        var MIF = e.srcElement?e.srcElement.id:null;
-        if(MIF && (MIF = Ext.get(MIF))){
-           MIF.loadHandler.call(MIF, e, e.srcElement);
-        }
-
-    },
-
     shimCls      : 'x-frame-shim',
-    /** @private */
     register     :function(frame){
         frame.manager = this;
         frames[frame.id] = frames[frame.dom.name] = {ref:frame, elCache:{}};
-
-        //Hook the Iframes loaded state handler
-        frame.dom.onload = frame.loadHandler.createDelegate(frame);
         return frame;
     },
-    /** @private */
+
     deRegister     :function(frame){
 
         frame._unHook();
-        frame.dom.onload = frame.dom.onreadystatechange = null;
         delete frames[frame.id];
         delete frames[frame.dom.name];
 
@@ -314,14 +272,13 @@ var MIM = Ext.ux.ManagedIFrame.Manager = function(){
     getFrameByName : function(name){
         return this.getFrameById(name);
     },
-    /** @private */
+
     //retrieve the internal frameCache object
     getFrameHash  : function(frame){
        return frame.id?frames[frame.id]:null;
 
     },
 
-    /** @private */
     //to be called under the scope of the managing MIF
     eventProxy     : function(e){
 
@@ -336,10 +293,9 @@ var MIM = Ext.ux.ManagedIFrame.Manager = function(){
             return this.fireEvent(e.type, e);
         }
     },
-    /** @private */
+
     _flyweights : {},
 
-    /** @private */
     destroy : function(){
       if(this._domreadySignature  ){
         Ext.EventManager.un.apply(Ext.EventManager,this._domreadySignature);
@@ -473,27 +429,16 @@ var MIM = Ext.ux.ManagedIFrame.Manager = function(){
 
     src : null ,
 
-    /**
-     * @cfg {String} resetUrl frame initialization string for use with the {@link #Ext.ux.ManagedIFrame-reset} method.
-     */
-    resetUrl : (function(){
-        if(Ext.isIE && Ext.isSecure){
-            return Ext.SSL_SECURE_URL;
-        } else {
-            return 'about:blank';
-        }
-    })(),
-
+    resetUrl :Ext.isIE&&Ext.isSecure?Ext.SSL_SECURE_URL: 'about:blank' ,
       /**
       * Sets the embedded Iframe src property.
-      * Note:  invoke the function with no arguments to refresh the iframe based on the current src value.
+
       * @param {String/Function} url (Optional) A string or reference to a Function that returns a URI string when called
       * @param {Boolean} discardUrl (Optional) If not passed as <tt>false</tt> the URL of this action becomes the default SRC attribute for
       * this iframe, and will be subsequently used in future setSrc calls (emulates autoRefresh by calling setSrc without params).
-      * @param {Function} callback (Optional) A callback function invoked when the frame document has been fully loaded.
-      * @param {Object} scope (Optional) scope by which the callback function is invoked.
+      * Note:  invoke the function with no arguments to refresh the iframe based on the current src value.
      */
-    setSrc : function(url, discardUrl, callback, scope){
+    setSrc : function(url, discardUrl, callback){
 
           var src = url || this.src || this.resetUrl;
 
@@ -501,13 +446,16 @@ var MIM = Ext.ux.ManagedIFrame.Manager = function(){
           this._unHook();
           this._frameAction = this.frameInit= this._domReady =false;
 
+          if(Ext.isOpera){ this.reset(); }
+
+          this._callBack = callback || false;
+
           this.showMask();
 
           (function(){
-                var s = this._targetURI = typeof src == 'function'?src()||'':src;
+                var s = typeof src == 'function'?src()||'':src;
                 try{
                     this._frameAction = true; //signal listening now
-                    this._callBack = typeof callback == 'function'? callback.createDelegate(scope) : null;
                     this.dom.src = s;
                     this.frameInit= true; //control initial event chatter
                     this.checkDOM();
@@ -520,72 +468,9 @@ var MIM = Ext.ux.ManagedIFrame.Manager = function(){
           return this;
 
     },
-     /**
-          * Sets the embedded Iframe src property.
-          * Note:  invoke the function with no arguments to refresh the iframe based on the current src value.
-          * @param {String/Function} url (Optional) A string or reference to a Function that returns a URI string when called
-          * @param {Boolean} discardUrl (Optional) If not passed as <tt>false</tt> the URL of this action becomes the default SRC attribute for
-          * this iframe, and will be subsequently used in future setSrc calls (emulates autoRefresh by calling setSrc without params).
-          * @param {Function} callback (Optional) A callback function invoked when the frame document has been fully loaded.
-          * @param {Object} scope (Optional) scope by which the callback function is invoked.
-
-         */
-
-        setLocation : function(url, discardUrl, callback, scope){
-
-              var src = url || this.src || this.resetUrl;
-
-              this._windowContext = null;
-              this._unHook();
-              this._frameAction = this.frameInit= this._domReady =false;
-
-              this.showMask();
-
-              (function(){
-                    var s = this._targetURI = typeof src == 'function'?src()||'':src;
-                    try{
-                        this._frameAction = true; //signal listening now
-                        this._callBack = typeof callback == 'function'? callback.createDelegate(scope) : null;
-
-                        this.getWindow().location.replace( s);
-                        this.frameInit= true; //control initial event chatter
-                        this.checkDOM();
-                    }catch(ex){ this.fireEvent('exception', this, ex); }
-
-              }).defer(100,this);
-
-              if(discardUrl !== true){ this.src = src; }
-
-              return this;
-
-    },
-     /**
-      * Resets the frame to a neutral (blank document) state without loadMasking.
-      * @param {String} src (Optional) A specific reset string (eg. 'about:blank') to use for resetting the frame.
-      * @param {Function} callback (Optional) A callback function invoked when the frame reset is complete.
-      * @param {Object} scope (Optional) scope by which the callback function is invoked.
-     */
-    reset     : function(src, callback, scope){
-
-          var loadMaskOff = this.loadMask ? this.loadMask.disabled : true;
-          loadMaskOff || (this.loadMask.disabled = true);
-
-          this._callBack = function(frame){
-              loadMaskOff || (frame.loadMask.disabled = false);
-              frame._frameAction = false;
-              frame.frameInit = true;
-
-              if(callback){
-                  callback.call(scope||window, frame);
-              }
-          };
-          this._frameAction = false; //no chatter on reset
-          this.frameInit = true
-
-          if(typeof src == 'function'){ src = src(); }
-          this.src =this._targetURI = Ext.isEmpty(src,true)? this.resetUrl : src;
-          this.getWindow().location.replace(this.src);
-
+    reset     : function(src, callback){
+          this.dom.src = src || this.resetUrl;
+          if(typeof callback == 'function'){ callback.defer(100);}
           return this;
 
     },
@@ -596,10 +481,9 @@ var MIM = Ext.ux.ManagedIFrame.Manager = function(){
      * Write(replacing) string content into the IFrames document structure
      * @param {String} content The new content
      * @param {Boolean} loadScripts (optional) true to also render and process embedded scripts
-     * @param {Function} callback (Optional) A callback function invoked when the frame document has been written and fully loaded.
-     * @param {Object} scope (Optional) scope by which the callback function is invoked.
+     * @param {Function} callback (optional) Callback when update is complete.
      */
-    update : function(content,loadScripts,callback,scope){
+    update : function(content,loadScripts,callback){
 
         loadScripts = loadScripts || this.getUpdateManager().loadScripts || false;
 
@@ -608,38 +492,36 @@ var MIM = Ext.ux.ManagedIFrame.Manager = function(){
 
         var doc;
 
-        if((doc = this.getDocument()) &&  !!content.length){
+        if(doc = this.getDocument()){
+
+            this._frameAction = !!content.length;
 
             this._windowContext = this.src = null;
-            this._targetURI = location.href;
+            this._callBack = callback || false;
             this._unHook();
             this.showMask();
-
-            (function(){
-                this._frameAction = true;
-                this.frameInit= true; //control initial event chatter
-                this._callBack = typeof callback == 'function'? callback.createDelegate(scope) : null;
-                doc.open();
-                doc.write(content);
-                doc.close();
+            doc.open();
+            doc.write(content);
+            doc.close();
+            this.frameInit= true; //control initial event chatter
+            if(this._frameAction){
                 this.checkDOM();
-            }).defer(100,this);
+            } else {
+                this.hideMask(true);
+                if(this._callBack)this._callBack();
+            }
 
         }else{
             this.hideMask(true);
-            if(callback){ callback.call(scope,this); }
+            if(this._callBack)this._callBack();
         }
         return this;
     },
 
-
-     /**
-      * Enables/disables internal cross-frame messaging interface
-      * @cfg {Boolean} disableMessaging False to enable cross-frame messaging API (default is True)
-      */
+    /* Enables/disables x-frame messaging interface */
     disableMessaging :  true,
 
-    /** @private, frame messaging interface (for same-domain-policy frames only) */
+    //Private, frame messaging interface (for same-domain-policy frames only)
     _XFrameMessaging  :  function(){
         //each tag gets a hash queue ($ = no tag ).
         var tagStack = {'$' : [] };
@@ -717,24 +599,10 @@ var MIM = Ext.ux.ManagedIFrame.Manager = function(){
 
 
     }
-    /**
-     * Method to retrieve embedded frame Element objects. Uses simple caching (per frame) to consistently return the same object.
-     * Automatically fixes if an object was recreated with the same id via AJAX or DOM.
-     * @param {Mixed} el The id of the node, a DOM Node or an existing Element.
-     * @return {Element} The Element object (or null if no matching element was found)
-     */
     ,get   :function(el){
              return  MIM.El.get(this, el);
          }
 
-    /**
-     * Gets the globally shared flyweight Element for the frame, with the passed node as the active element. Do not store a reference to this element -
-     * the dom node can be overwritten by other code.
-     * @param {String/HTMLElement} el The dom node or id
-     * @param {String} named (optional) Allows for creation of named reusable flyweights to
-     *                                  prevent conflicts (e.g. internally Ext uses "_internal")
-     * @return {Element} The shared Element object (or null if no matching element was found)
-     */
     ,fly : function(el, named){
         named = named || '_global';
         el = this.getDom(el);
@@ -747,11 +615,7 @@ var MIM = Ext.ux.ManagedIFrame.Manager = function(){
         MIM._flyweights[named].dom = el;
         return MIM._flyweights[named];
     }
-     /**
-      * Return the dom node for the passed string (id), dom node, or Ext.Element relative to the embedded frame document context.
-      * @param {Mixed} el
-      * @return HTMLElement
-      */
+
     ,getDom  : function(el){
          var d;
          if(!el || !(d = this.getDocument())){
@@ -783,7 +647,7 @@ var MIM = Ext.ux.ManagedIFrame.Manager = function(){
 
 
     /**
-     * Returns the frame's current HTML document object as an {@link Ext.Element}.
+     * Returns the current HTML document object as an {@link Ext.Element}.
      * @return Ext.Element The document
     */
     ,getDoc  : function(){
@@ -810,7 +674,7 @@ var MIM = Ext.ux.ManagedIFrame.Manager = function(){
                 var el = elcache[id];
 
                 delete elcache[id];
-                if(el.removeAllListeners){ el.removeAllListeners(); }
+                if(el.removeAllListeners)el.removeAllListeners();
             }
             if(h.docEl){
                 h.docEl.removeAllListeners();
@@ -855,13 +719,7 @@ var MIM = Ext.ux.ManagedIFrame.Manager = function(){
         return this.domWritable();
 
     },
-    /* dispatch a message to the embedded frame-window context
-    * @name sendMessage
-    * @methodOf Ext.ux.ManagedIFrame
-    * @param {Mixed} message The message payload
-    * @param {String} tag Optional reference tag
-    * @param {String} origin Optional domain designation of the sender (defaults to document.domain).
-    */
+    /* dispatch a message to the embedded frame-window context */
     sendMessage : function (message,tag,origin){
          var win;
          if(this.disableMessaging !== true && (win = this.getWindow())){
@@ -881,13 +739,9 @@ var MIM = Ext.ux.ManagedIFrame.Manager = function(){
          return null;
 
     },
-
-    /** @private */
     _windowContext : null,
-
-    /**
-     * If sufficient privilege exists, returns the frame's current document as an HTMLElement.
-     * @return {HTMLElement} The frame document or false if access to document object was denied.
+    /*
+      Return the Iframes document object
     */
     getDocument:function(){
       var win=this.getWindow(), doc=null;
@@ -902,37 +756,23 @@ var MIM = Ext.ux.ManagedIFrame.Manager = function(){
       return doc;
     },
 
-     /**
-      * If sufficient privilege exists, returns the frame's current document body as an HTMLElement.
-      * @return {HTMLElement} The frame document body or Null if access to document object was denied.
-      */
+    //Attempt to retrieve the frames current document.body
     getBody : function(){
         var d;
         return (d = this.getDocument())?d.body:null;
     },
 
-    //Attempt to retrieve the frames current URI via document
+    //Attempt to retrieve the frames current URI
     getDocumentURI : function(){
         var URI, d;
         try{
            URI = this.src && (d = this.getDocument()) ? d.location.href:null;
-        }catch(ex){ //will fail on NON-same-origin domains
-            }
-        return URI || (typeof this.src == 'function'? this.src(): this.src ); //fallback to last known
+        }catch(ex){} //will fail on NON-same-origin domains
+        return URI || this.src; //fallback to last known
     },
-
-    //Attempt to retrieve the frames current URI via document
-    getWindowURI : function(){
-            var URI, w;
-            try{
-               URI = (w = this.getWindow()) ? w.location.href:null;
-            }catch(ex){} //will fail on NON-same-origin domains
-            return URI || (typeof this.src == 'function'? this.src(): this.src ); //fallback to last known
-    },
-     /**
-      * Returns the frame's current window object.
-      * @return {Window} The frame Window object.
-      */
+    /*
+     Return the Iframes window object
+    */
     getWindow:function(){
         var dom= this.dom, win=null;
         try{
@@ -953,11 +793,13 @@ var MIM = Ext.ux.ManagedIFrame.Manager = function(){
             throw 'print exception: ' + (ex.description || ex.message || ex);
         }
     },
-    /** @private */
+    //private
     destroy:function(){
         this.removeAllListeners();
 
         if(this.dom){
+             //unHook the Iframes loaded state handlers
+             this.dom[this._eventName]=null;
 
              Ext.ux.ManagedIFrame.Manager.deRegister(this);
              this._windowContext = null;
@@ -972,9 +814,7 @@ var MIM = Ext.ux.ManagedIFrame.Manager = function(){
         if(this.loadMask){ Ext.apply(this.loadMask,{masker :null ,maskEl : null});}
 
     }
-    /* Returns the general DOM modification capability of the frame.
-    * @return {Boolean} If True, the frame's DOM can be manipulated, queried, and Event Listeners set.
-    */
+    /* Returns the general DOM modification capability of the frame. */
     ,domWritable  : function(){
         return !!this._windowContext;
     }
@@ -1032,22 +872,23 @@ var MIM = Ext.ux.ManagedIFrame.Manager = function(){
                 }
             }
          }catch(ex){
-
+             //console.warn('writeScript Exception ', ex);
              this.fireEvent('exception', this, ex);}
          return false;
     }
     /*
      * Eval a function definition into the iframe window context.
      * args:
-     * @param {String/Object} fn Name of the function or function map object: {name:'encodeHTML',fn:Ext.util.Format.htmlEncode}
-     * @param {Boolean} useDOM - if true inserts the fn into a dynamic script tag, false does a simple eval on the function definition,
-     * @param {Boolean} invokeIt - if true, the function specified is also executed in the Window context of the frame.  Function arguments are not supported.
-     * examples:<pre>
-      var trim = function(s){
-          return s.replace( /^\s+|\s+$/g,'');
-          };
-      iframe.loadFunction('trim');
-      iframe.loadFunction({name:'myTrim',fn:String.prototype.trim || trim});</pre>
+     * @param {String/Object} name of the function or
+                              function map object: {name:'encodeHTML',fn:Ext.util.Format.htmlEncode}
+     * @param {Boolean} useDOM - if true inserts the fn into a dynamic script tag,
+                                    false does a simple eval on the function definition,
+     * examples:
+     * var trim = function(s){
+     *     return s.replace( /^\s+|\s+$/g,'');
+     *     };
+     * iframe.loadFunction('trim');
+     * iframe.loadFunction({name:'myTrim',fn:String.prototype.trim || trim});
      */
     ,loadFunction : function(fn, useDOM, invokeIt){
 
@@ -1059,40 +900,27 @@ var MIM = Ext.ux.ManagedIFrame.Manager = function(){
         }
     }
 
-    /*
-     *  Forcefully show the defined loadMask
-     * @param {String} msg Mask text to display during the mask operation, defaults to previous defined loadMask config value.
-     * @param {String} msgCls The CSS class to apply to the loading message element (defaults to "x-mask-loading")
-     * @param {Boolean} forced True to show the mask regardless of document ready/loaded state.
-     */
+    //Private
     ,showMask: function(msg,msgCls,forced){
-          var lmask = this.loadMask;
-
-          if(lmask && !lmask.disabled){
+          var lmask;
+          if((lmask = this.loadMask) && (!lmask.disabled|| forced)){
+               if(lmask._vis)return;
                lmask.masker || (lmask.masker = Ext.get(lmask.maskEl||this.dom.parentNode||this.wrap({tag:'div',style:{position:'relative'}})));
-               (function(){
-                  this._vis = !!this.masker.mask(msg||this.msg , msgCls||this.msgCls);
-                }).defer(lmask.delay||1,lmask)
-
-
+               lmask._vis = true;
+               lmask.masker.mask.defer(lmask.delay||5,lmask.masker,[msg||lmask.msg , msgCls||lmask.msgCls] );
            }
        }
-     /*
-      *  Forcefully hide the defined loadMask
-      * @param {Boolean} forced True to hide the mask regardless of document ready/loaded state.
-     */
+    //Private
     ,hideMask: function(forced){
-           var tlm = this.loadMask;
-
-           if(tlm && !tlm.disabled && tlm.masker ){
-               if(forced || (tlm.hideOnReady && this._domReady) ){
-                   tlm.masker.unmask();
-                   tlm._vis = false;
-               }
+           var tlm;
+           if((tlm = this.loadMask) && !tlm.disabled && tlm.masker ){
+               if(!forced && (tlm.hideOnReady!==true && this._domReady)){return;}
+               tlm._vis = false;
+               tlm.masker.unmask.defer(tlm.delay||5,tlm.masker);
            }
     }
 
-    /* @private
+    /* Private
       Evaluate the Iframes readyState/load event to determine its 'load' state,
       and raise the 'domready/documentloaded' event when applicable.
     */
@@ -1101,43 +929,40 @@ var MIM = Ext.ux.ManagedIFrame.Manager = function(){
         if(!this.frameInit  || (!this._frameAction && !this.eventsFollowFrameLinks)){return;}
         target || (target={});
         var rstatus = (e && typeof e.type !== 'undefined'?e.type:this.dom.readyState );
-        //console.info([this.id, rstatus,  this._frameAction , this.frameInit, this._targetURI]);
         switch(rstatus){
-
+            case 'loading':  //IE
+            case 'interactive': //IE
+              break;
             case 'domready': //MIF
-              if(this._domReady) return;
+              if(this._domReady)return;
               this._domReady = true;
-
-              if(this._frameAction &&
-                this.getDocumentURI() != 'about:blank' &&
-               ( this._hooked = this._renderHook()) ){ //Only raise if sandBox injection succeeded (same domain)
+              if( this._hooked = this._renderHook() ){ //Only raise if sandBox injection succeeded (same domain)
                  this._domFired = true;
                  this.fireEvent("domready",this);
               }
             case 'domfail': //MIF
               this._domReady = true;
               this.hideMask();
-              //setSrc and update method (async) callbacks are called ASAP.
-              if(this._callBack){
-                   this._callBack.defer(5,null,[this]);
-              }
               break;
-            case 'load': //Gecko, Opera, IE
-
+            case 'load': //Gecko, Opera
+            case 'complete': //IE
               if(!this._domReady ){  // one last try for slow DOMS.
-                  this.loadHandler({type:'domready',id:this.id},this.dom);
+                  this.loadHandler({type:'domready',id:this.id});
               }
               this.hideMask(true);
               if(this._frameAction || this.eventsFollowFrameLinks ){
-                   //not going to wait for the event chain, as it's not cancellable anyhow.
-                   this.fireEvent.defer(50,this,["documentloaded",this]);
+
+                //not going to wait for the event chain, as it's not cancellable anyhow.
+                this.fireEvent.defer(50,this,["documentloaded",this]);
               }
               this._frameAction = this._frameInit = false;
 
               if(this.eventsFollowFrameLinks){  //reset for link tracking
                   this._domFired = this._domReady = false;
               }
-
+              if(this._callBack){
+                   this._callBack(this);
+              }
 
               break;
             default:
@@ -1146,41 +971,51 @@ var MIM = Ext.ux.ManagedIFrame.Manager = function(){
         this.frameState = rstatus;
 
     }
-    /* @private
+    /* Private
       Poll the Iframes document structure to determine DOM ready state,
       and raise the 'domready' event when applicable.
     */
     ,checkDOM : function(win){
-        if( Ext.isOpera || Ext.isGecko || !this._frameAction )return;
+        if(Ext.isOpera || Ext.isGecko || !this._frameAction )return;
         //initialise the counter
         var n = 0
+            ,win = win||this.getWindow()
             ,manager = this
-            ,domReady = false, b, l, d
-            ,max = 300
-            ,polling = false
-            ,startLocation = (this.getDocument()||{location:{}}).location.href;
+            ,domReady = false
+            ,max = 300;
 
-            (function(){  //DOM polling for IE and others
+            var poll =  function(){  //DOM polling for IE and others
+               try{
 
-               d = manager.getDocument()||{location:{}};
+                 var doc = manager.getDocument(),body=null;
+                 if(doc ===false){throw "Document Access Denied"; }
 
-               //wait for location.href transition
-               polling = ( d.location.href !== startLocation || d.location.href === manager._targetURI);
+                 if(!manager._domReady){
+                    domReady = !!(doc && doc.getElementsByTagName);
+                    domReady = domReady && (body = doc.getElementsByTagName('body')[0]) && !!body.innerHTML.length;
+                 }
 
-               if(!manager._frameAction || manager._domReady){return;}
+               }catch(ex){
+                     n = max; //likely same-origin policy violation, so DOM is ready
+               }
 
-               domReady = polling && ((b = manager.getBody()) && !!(b.innerHTML||'').length)||false;
+                //if the timer has reached 100 (timeout after 3 seconds)
+                //in practice, shouldn't take longer than 7 iterations [in kde 3
+                //in second place was IE6, which takes 2 or 3 iterations roughly 5% of the time]
 
-               //null href is a 'same-origin' document access violation,
-               //so we assume the DOM is built when the browser updates it
-               if(d.location.href && !domReady && (++n < max) ){
-                       setTimeout(arguments.callee, 5); //try again
-                       return;
-                  }
+                if(!manager._frameAction || manager._domReady)return;
 
-               manager.loadHandler ({type:domReady?'domready':'domfail'});
+                if((++n < max) && !domReady )
+                {
+                    //try again
+                    setTimeout(arguments.callee, 10);
+                    return;
+                }
 
-             })();
+                manager.loadHandler ({type:domReady?'domready':'domfail'});
+
+            };
+            setTimeout(poll,40);
      }
  });
 
@@ -1347,202 +1182,66 @@ var CSSInterface = function(hostDocument){
 };
 
  /*
-  * @class Ext.ux.panel.ManagedIFrame
-  * @extends Ext.Panel
-  * @version:  1.2
-  * @license <a href="http://www.gnu.org/licenses/lgpl.html">LGPL 3.0</a>
-  * @author: Doug Hendricks. Forum ID: <a href="http://extjs.com/forum/member.php?u=8730">hendricd</a>
-  * Copyright 2007-2008, Active Group, Inc.  All rights reserved.
+  * @class Ext.ux.ManagedIFramePanel
+  * Version:  1.2  (8/22/2008)
+
+
+  * Author: Doug Hendricks - doug[always-At]theactivegroup.com
   *
-  * @constructor
-  * Create a new Ext.ux.panel.ManagedIFrame
-  * @param {Object} config The config object
-  */
+  *
+ */
  Ext.ux.ManagedIframePanel = Ext.extend(Ext.Panel, {
 
-
-             /**
-              * Fires when the frame gets focus.
-              * Note: This event is only available when overwriting the iframe document using the update method and to pages
-              * retrieved from a "same domain".
-              * Returning false from the eventHandler [MAY] NOT cancel the event, as this event is NOT ALWAYS cancellable in all browsers.
-              * @event focus
-              * @param {Ext.ux.ManagedIFrame} this.iframe
-              * @param {Ext.Event}
-
-              */
-
-             /**
-              * Fires when the frame is blurred (loses focus).
-              * @event blur
-              * @param {Ext.ux.ManagedIFrame} this.iframe
-              * @param {Ext.Event}
-              * Note: This event is only available when overwriting the iframe document using the update method and to pages
-              * retrieved from a "same domain".
-              * Returning false from the eventHandler [MAY] NOT cancel the event, as this event is NOT ALWAYS cancellable in all browsers.
-              */
-
-             /**
-              * Note: This event is only available when overwriting the iframe document using the update method and to pages
-              * retrieved from a "same domain".
-              * Note: Opera does not raise this event.
-              * @event unload
-              * * Fires when(if) the frames window object raises the unload event
-              * @param {Ext.ux.ManagedIFrame} this.iframe
-              * @param {Ext.Event}
-              */
-
-            /**
-              * Note: This event is only available when overwriting the iframe document using the update method and to pages
-              * retrieved from a "same domain".
-              * Returning false from the eventHandler stops further event (documentloaded) processing.
-              * @event domready
-              * Fires ONLY when an iFrame's Document(DOM) has reach a state where the DOM may be manipulated (ie same domain policy)
-              * @param {Ext.ux.ManagedIFrame} this.iframe
-              */
-
-            /**
-              * Fires when the iFrame has reached a loaded/complete state.
-              * @event documentloaded
-              * @param {Ext.ux.ManagedIFrame} this.iframe
-              */
-
-             /**
-              * Fires when the frame actions raise an error
-              * @event exception
-              * @param {Ext.ux.ManagedIFrame} this.iframe
-              * @param {Error/string} exception
-              */
-
-             /**
-              * Fires upon receipt of a message generated by window.sendMessage method of the embedded Iframe.window object
-              * @event message
-
-              * @param {Ext.ux.ManagedIFrame} this.iframe
-              * @param {object} message (members:  type: {string} literal "message",
-              *                                    data {Mixed} [the message payload],
-              *                                    domain [the document domain from which the message originated ],
-              *                                    uri {string} the document URI of the message sender
-              *                                    source (Object) the window context of the message sender
-              *                                    tag {string} optional reference tag sent by the message sender
-              */
-
-             /**
-              * Alternate event handler syntax for message:tag filtering
-              * Fires upon receipt of a message generated by window.sendMessage method
-              * which includes a specific tag value of the embedded Iframe.window object
-              * @event message:tag
-              * @param {Ext.ux.ManagedIFrame} this.iframe
-              * @param {object} message (members:  type: {string} literal "message",
-              *                                    data {Mixed} [the message payload],
-              *                                    domain [the document domain from which the message originated ],
-              *                                    uri {string} the document URI of the message sender
-              *                                    source (Object) the window context of the message sender
-              *                                    tag {string} optional reference tag sent by the message sender
-              */
-             //"message:tagName"  is supported for X-frame messaging
-
-
     /**
-     * @cfg {String/Function} defaultSrc Cached Iframe.src url (or Function that returns it) to use for initial rendering and refreshes. Overwritten every time {@link Ext.ux.panel.ManagedIframe#setSrc} is called unless "discardUrl" param is set to true.
+    * Cached Iframe.src url to use for refreshes. Overwritten every time setSrc() is called unless "discardUrl" param is set to true.
+    * @type String/Function (which will return a string URL when invoked)
      */
     defaultSrc  :null,
-
-    /**
-     * @cfg {Object/String} bodyStyle
-     * Inline style rules applied to the Panel body prior to render.
-     */
     bodyStyle   :{height:'100%',width:'100%', position:'relative'},
 
     /**
-    * @cfg {Object} frameStyle
-    * Custom CSS styles to be applied to the Ext.ux.ManagedIframe frame element in the format expected by {@link Ext.Element#applyStyles}
+    * @cfg {String/Object} frameStyle
+    * Custom CSS styles to be applied to the ux.ManagedIframe element in the format expected by {@link Ext.Element#applyStyles}
     * (defaults to CSS Rule {overflow:'auto'}).
     */
     frameStyle  : {overflow:'auto'},
-    /**
-     * @cfg {Object} frameConfig
-     * Custom DOMHelper config for iframe node specifications (eg. name, id, frameBorder, etc)
-     * Note: To specify/override with a unique Element id or name for the underlying iframe, use the autoCreate config option with it:
-     <pre>
-       var MIF= new Ext.ux.ManagedIframePanel({
-           frameConfig : { autoCreate:{ id: 'frameA', name: 'frameA'}, disableMessaging: false},
-           defaultSrc: 'sites/customerList.html'
-          });
-       </pre>
-      */
     frameConfig : null,
-
-    /**
-     * @cfg {String} hideMode
-     * How this component should hidden. Supported values are "visibility" (css visibility), "offsets" (negative
-     * offset position), "display" (css display), and "nosize" (height/width set to zero (0px) - defaults to "display"
-     * for Internet Explorer and "nosize" for all other browsers (to prevent frame re-initialization after reflow of frame parentNodes).
-     */
-
     hideMode    : !Ext.isIE?'nosize':'display',
-
-
     shimCls     : Ext.ux.ManagedIFrame.Manager.shimCls,
-
-    /**
-     * @cfg {String} shimUrl
-     * The url of a transparent graphic image used to shim the frame (during drag or other) shimming operation.  Defaults to Ext.BLANK_IMG_URL.
-     */
     shimUrl     : null,
-    /**
-     * @cfg {Object} loadMask An {@link Ext.LoadMask} config or true to mask the frame while loading (defaults to false).
-     * Additional loadMask configuration options:
-       hideOnReady : {Boolean} False to hide the loadMask when the frame document is fully loaded rather than on domready.
-     */
     loadMask    : false,
     stateful    : false,
     animCollapse: Ext.isIE && Ext.enableFx,
-    /** @private  class override*/
     autoScroll  : false,
-    /* @cfg {Boolean} closable Set True by default in the event a site times-out while loadMasked */
-    closable    : true,
-    /** @private */
+    closable    : true, /* set True by default in the event a site times-out while loadMasked */
     ctype       : "Ext.ux.ManagedIframePanel",
-    /** @private  class override*/
     showLoadIndicator : false,
 
     /**
-    *@cfg {String/Object} unsupportedText Text (or Ext.DOMHelper config) to display within the rendered iframe tag to indicate the frame is not supported/enabled in the browser.
+    *@cfg {String/Object} unsupportedText Text (or Ext.DOMHelper config) to display within the rendered iframe tag to indicate the frame is not supported
     */
     unsupportedText : 'Inline frames are NOT enabled\/supported by your browser.'
 
-   /** @private */
    ,initComponent : function(){
-        var frameTag = Ext.apply({
-                              tag          :'iframe',
-                              frameborder  : 0,
-                              cls          : 'x-managed-iframe',
-                              style        : this.frameStyle || {},
-                              html         : this.unsupportedText||null
-                            },this.frameConfig?this.frameConfig.autoCreate || this.frameConfig : false);
-
-        if(Ext.isIE ){
-             Ext.apply(frameTag,{
-                onload : 'Ext.ux.ManagedIFrame.Manager.IEloadHandler()'
-
-             });
-             if(Ext.isSecure){
-                 frameTag.src=Ext.SSL_SECURE_URL;
-             }
-         }
 
         this.bodyCfg ||
            (this.bodyCfg =
                   {  cls    :'x-managed-iframe-mask' //shared masking DIV for hosting loadMask/dragMask
                     ,children:[
-                          frameTag
+                        //Ext.apply(
+                          Ext.apply({
+                              tag          :'iframe',
+                              frameborder  : 0,
+                              cls          : 'x-managed-iframe',
+                              style        : this.frameStyle || null,
+                              html         :this.unsupportedText||null
+                            },this.frameConfig?this.frameConfig.autoCreate||{}:false
+                            , Ext.isIE && Ext.isSecure?{src:Ext.SSL_SECURE_URL}:false
+                            )
                              //the shimming agent
-                         ,{tag:'img', src:this.shimUrl||Ext.BLANK_IMAGE_URL , cls: this.shimCls , galleryimg:"no"}
+                            ,{tag:'img', src:this.shimUrl||Ext.BLANK_IMAGE_URL , cls: this.shimCls , galleryimg:"no"}
                          ]
            });
-
-
 
          this.autoScroll = false; //Force off as the Iframe manages this
          this.items = null;
@@ -1562,7 +1261,7 @@ var CSSInterface = function(hostDocument){
          this.addListener = this.on;
 
     },
-    /** @private */
+
     doLayout   :  function(){
         //only resize (to Parent) if the panel is NOT in a layout.
         //parentNode should have {style:overflow:hidden;} applied.
@@ -1574,7 +1273,7 @@ var CSSInterface = function(hostDocument){
 
     },
 
-    /** @private */
+      // private
     beforeDestroy : function(){
 
         if(this.rendered){
@@ -1606,14 +1305,11 @@ var CSSInterface = function(hostDocument){
 
         Ext.ux.ManagedIframePanel.superclass.beforeDestroy.call(this);
     },
-    /** @private */
     onDestroy : function(){
         //Yes, Panel.super (Component), since we're doing Panel cleanup beforeDestroy instead.
         Ext.Panel.superclass.onDestroy.call(this);
     },
-
-    /** @private */
-
+    // private
     onRender : function(ct, position){
         Ext.ux.ManagedIframePanel.superclass.onRender.call(this, ct, position);
 
@@ -1632,7 +1328,7 @@ var CSSInterface = function(hostDocument){
             if(this.loadMask){
                 this.loadMask = Ext.apply({disabled     :false
                                           ,maskEl       :this.body
-                                          ,hideOnReady  :false}
+                                          ,hideOnReady  :true}
                                           ,this.loadMask);
              }
 
@@ -1640,6 +1336,7 @@ var CSSInterface = function(hostDocument){
                     loadMask           :this.loadMask
                    ,showLoadIndicator  :this.showLoadIndicator
                    ,disableMessaging   :this.disableMessaging
+                   ,style              :this.frameStyle
                    })){
 
                 this.loadMask = this.iframe.loadMask;
@@ -1683,35 +1380,25 @@ var CSSInterface = function(hostDocument){
         this.shim = Ext.get(this.body.child('.'+this.shimCls));
     },
 
-   /* Toggles the built-in MIF shim on/off
-    * @name toggleShim
-    * @methodOf Ext.ux.panel.ManagedIframe
-    */
+    /* Toggles the built-in MIF shim */
     toggleShim   : function(){
 
         if(this.shim && this.shimCls)this.shim.toggleClass(this.shimCls+'-on');
     },
-    /** @private */
+        // private
     afterRender : function(container){
         var html = this.html;
         delete this.html;
         Ext.ux.ManagedIframePanel.superclass.afterRender.call(this);
         if(this.iframe){
             if(this.defaultSrc){
-                this.setSrc(this.defaultSrc);
+                this.setSrc();
             }
             else if(html){
                 this.iframe.update(typeof html == 'object' ? Ext.DomHelper.markup(html) : html);
             }
         }
     }
-     /* dispatch a message to the embedded frame-window context
-        * @name sendMessage
-        * @methodOf Ext.ux.panel.ManagedIframe
-        * @param {Mixed} message The message payload
-        * @param {String} tag Optional reference tag
-        * @param {String} origin Optional domain designation of the sender (defaults to document.domain).
-    */
     ,sendMessage :function (){
         if(this.iframe){
             this.iframe.sendMessage.apply(this.iframe,arguments);
@@ -1739,16 +1426,14 @@ var CSSInterface = function(hostDocument){
            }
            Ext.ux.ManagedIframePanel.superclass.on.apply(this, arguments);
     },
-   /**
-     * Sets the embedded Iframe src property.
-     * Note:  invoke the function with no arguments to refresh the iframe based on the current src value.
-     * @param {String/Function} url (Optional) A string or reference to a Function that returns a URI string when called
-     * @param {Boolean} discardUrl (Optional) If not passed as <tt>false</tt> the URL of this action becomes the default SRC attribute for
-     * this iframe, and will be subsequently used in future setSrc calls (emulates autoRefresh by calling setSrc without params).
-     * @param {Function} callback (Optional) A callback function invoked when the frame document has been fully loaded.
-     * @param {Object} scope (Optional) scope by which the callback function is invoked.
-     */
-    setSrc : function(url, discardUrl,callback, scope){
+    /**
+    * Sets the embedded Iframe src property.
+    * @param {String/Function} url (Optional) A string or reference to a Function that returns a URI string when called
+    * @param {Boolean} discardUrl (Optional) If not passed as <tt>false</tt> the URL of this action becomes the default URL for
+    * this panel, and will be subsequently used in future setSrc calls.
+    * Note:  invoke the function with no arguments to refresh the iframe based on the current defaultSrc value.
+    */
+    setSrc : function(url, discardUrl,callback){
          url = url || this.defaultSrc || false;
 
          if(!url)return this;
@@ -1757,20 +1442,18 @@ var CSSInterface = function(hostDocument){
             callback = url.callback || false;
             discardUrl = url.discardUrl || false;
             url = url.url || false;
-            scope = url.scope || null;
+
          }
+         var src = url || (Ext.isIE&&Ext.isSecure?Ext.SSL_SECURE_URL:'');
 
          if(this.rendered && this.iframe){
-              var u= url || this.iframe.resetUrl;
-              this.iframe.setSrc(u ,discardUrl, callback, scope);
+              this.iframe.setSrc(src,discardUrl,callback);
            }
 
          return this;
     },
 
-    /** @private
-        //Make it state-aware
-    */
+    //Make it state-aware
     getState: function(){
 
          var URI = this.iframe?this.iframe.getDocumentURI()||null:null;
@@ -1779,8 +1462,7 @@ var CSSInterface = function(hostDocument){
 
     },
     /**
-     * Get the {@link Ext.Updater} for this panel's iframe/or body.
-     * Enables Ajax-based document replacement of this panel's iframe document.
+     * Get the {@link Ext.Updater} for this panel's iframe/or body. Enables you to perform Ajax-based document replacement of this panel's iframe document.
      * @return {Ext.Updater} The Updater
      */
     getUpdater : function(){
@@ -1788,23 +1470,22 @@ var CSSInterface = function(hostDocument){
     },
     /**
      * Get the embedded iframe Ext.Element for this panel
-     * @return {Ext.Element} The Panels Ext.ux.ManagedIFrame instance.
+     * @return {Ext.Element} The Panels ux.ManagedIFrame instance.
      */
     getFrame : function(){
         return this.rendered?this.iframe:null
     },
-
-     /**
-      * Returns the frame's current window object.
-      * @return {Window} The frame Window object.
-      */
+    /**
+     * Get the embedded iframe's window object
+     * @return {Object} or Null if unavailable
+     */
     getFrameWindow : function(){
         return this.rendered && this.iframe?this.iframe.getWindow():null;
     },
     /**
-     * If sufficient privilege exists, returns the frame's current document as an HTMLElement.
-     * @return {HTMLElement} The frame document or false if access to document object was denied.
-    */
+     * Get the embedded iframe's document object
+     * @return {Element} or null if unavailable
+     */
     getFrameDocument : function(){
         return this.rendered && this.iframe?this.iframe.getDocument():null;
     },
@@ -1818,8 +1499,8 @@ var CSSInterface = function(hostDocument){
     },
 
     /**
-     * If sufficient privilege exists, returns the frame's current document body as an HTMLElement.
-     * @return {HTMLElement} The frame document body or Null if access to document object was denied.
+     * Get the embedded iframe's document.body Element.
+     * @return {Element object} or null if unavailable
      */
     getFrameBody : function(){
         return this.rendered && this.iframe?this.iframe.getBody():null;
@@ -1857,7 +1538,7 @@ var CSSInterface = function(hostDocument){
          }
          return this;
     }
-    /** @private */
+     // private
     ,doAutoLoad : function(){
         this.load(
             typeof this.autoLoad == 'object' ?
@@ -1866,22 +1547,7 @@ var CSSInterface = function(hostDocument){
 
 });
 
-Ext.ns('Ext.ux.panel', 'Ext.ux.portlet');
-Ext.reg('iframepanel', Ext.ux.panel.ManagedIframe = Ext.ux.ManagedIframePanel);
-
-
-/*
-  * @class Ext.ux.portlet.ManagedIFrame
-  * @extends Ext.ux.panel.ManagedIframe
-  * @version:  1.2
-  * @license <a href="http://www.gnu.org/licenses/lgpl.html">LGPL 3.0</a>
-  * @author: Doug Hendricks. Forum ID: <a href="http://extjs.com/forum/member.php?u=8730">hendricd</a>
-  * Copyright 2007-2008, Active Group, Inc.  All rights reserved.
-  *
-  * @constructor
-  * Create a new Ext.ux.portlet.ManagedIFrame
-  * @param {Object} config The config object
-  */
+Ext.reg('iframepanel', Ext.ux.ManagedIframePanel);
 
 Ext.ux.ManagedIframePortlet = Ext.extend(Ext.ux.ManagedIframePanel, {
      anchor: '100%',
@@ -1891,7 +1557,7 @@ Ext.ux.ManagedIframePortlet = Ext.extend(Ext.ux.ManagedIframePanel, {
      draggable:true,
      cls:'x-portlet'
  });
-Ext.reg('iframeportlet', Ext.ux.portlet.ManagedIframe = Ext.ux.ManagedIframePortlet);
+Ext.reg('iframeportlet', Ext.ux.ManagedIframePortlet);
 
 /* override adds a third visibility feature to Ext.Element:
 * Now an elements' visibility may be handled by application of a custom (hiding) CSS className.
@@ -1977,4 +1643,3 @@ Ext.onReady( function(){
 });
 })();
 //@ sourceURL=<miframe.js>
-if(Ext.provide){ Ext.provide('miframe');}
