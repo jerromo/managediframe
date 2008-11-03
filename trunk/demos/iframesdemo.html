@@ -10,7 +10,7 @@
     <script type="text/javascript" src="../../adapter/ext/ext-base.js"></script>
  <!-- ENDLIBS -->
 
-    <script type="text/javascript" src="../../ext-all.js"></script>
+    <script type="text/javascript" src="../../ext-all-debug.js"></script>
 
      <script type="text/javascript" src="../portal/Portal.js"></script>
      <script type="text/javascript" src="../portal/PortalColumn.js"></script>
@@ -56,7 +56,7 @@
 
         // create some portlet tools using built in Ext tool ids
        var tools = [{
-               id:'gear',
+               id:'refresh',
                handler: function(e, target, panel){
                    panel.setSrc();
                }
@@ -254,7 +254,7 @@
                         },
                         documentloaded : function(frame){
                             console.warn( 'DL ' +frame._targetURI );
-                            if(frame.src){
+                            if(frame.domWritable()){
                                 console.info( 'docLoaded: Received Result: ' +  frame.getWindow().name );
 
                             }
@@ -266,16 +266,17 @@
                           var MIFP;
                           if(MIFP =Ext.getCmp('winname')){
                               var f = MIFP.getFrame(),handled = false;
-                              f.setLocation('http://licensing.theactivegroup.com/nametest.html?_cb='+new Date().getTime(),
+
+                              f.setSrc('http://licensing.theactivegroup.com/nametest.html?_cb='+new Date().getTime(),
                                  false ,
                                  //Reset to our local domain and get the results.
                                  function(frame){
-                                     frame.reset(null,function(frame){
+                                     frame.reset(null
+                                     ,function(frame){
                                         frame.update('Received Result: ' +  frame.getWindow().name );
 
-                                     }
-                                     );}
-                              );
+                                     });
+                              });
 
                            }
                          }
