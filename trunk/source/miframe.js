@@ -43,7 +43,8 @@
  * </code></pre>
  *
  * <br>
- *
+ * Release: 1.2.2( 11/10/2008)
+ *      Fix: setSrc ( {url: url,callback: function(){}....}) style calls were broken.
  * Release: 1.2.1( 11/3/2008)
  *      Mod: Corrected <noframes> support (unsupportedText)
  *      Mod: Improved domready detection for Opera, Webkit, and IE. jsDOC updates.
@@ -416,6 +417,13 @@
          */
         setSrc : function(url, discardUrl, callback, scope) {
 
+            if (url && typeof url == 'object') {
+                callback = url.callback || false;
+                discardUrl = url.discardUrl || false;
+                url = url.url || false;
+                scope = url.scope || null;
+            }
+
             var src = url || this.src || this.resetUrl;
 
             this._windowContext = null;
@@ -464,6 +472,13 @@
          */
 
         setLocation : function(url, discardUrl, callback, scope) {
+
+            if (url && typeof url == 'object') {
+                callback = url.callback || false;
+                discardUrl = url.discardUrl || false;
+                url = url.url || false;
+                scope = url.scope || null;
+            }
 
             var src = url || this.src || this.resetUrl;
 
@@ -1986,19 +2001,8 @@
         setSrc : function(url, discardUrl, callback, scope) {
             url = url || this.defaultSrc || false;
 
-            if (!url)
-                return this;
-
-            if (url.url) {
-                callback = url.callback || false;
-                discardUrl = url.discardUrl || false;
-                url = url.url || false;
-                scope = url.scope || null;
-            }
-
-            if (this.rendered && this.iframe) {
-                var u = url || this.iframe.resetUrl;
-                this.iframe.setSrc(u, discardUrl, callback, scope);
+            if (url && this.rendered && this.iframe) {
+                this.iframe.setSrc.call(this.iframe, url, discardUrl, callback, scope);
             }
 
             return this;
@@ -2021,22 +2025,12 @@
          *            invoked.
          */
         setLocation : function(url, discardUrl, callback, scope) {
-            url = url || this.defaultSrc || false;
+           url = url || this.defaultSrc || false;
 
-            if (!url)
-                return this;
+           if (url && this.rendered && this.iframe) {
+               this.iframe.setLocation.call(this.iframe, url, discardUrl, callback, scope);
+           }
 
-            if (url.url) {
-                callback = url.callback || false;
-                discardUrl = url.discardUrl || false;
-                url = url.url || false;
-                scope = url.scope || null;
-            }
-
-            if (this.rendered && this.iframe) {
-                var u = url || this.iframe.resetUrl;
-                this.iframe.setLocation(u, discardUrl, callback, scope);
-            }
 
             return this;
         },
