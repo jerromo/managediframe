@@ -43,6 +43,8 @@
  * </code></pre>
  *
  * <br>
+ * Release: 1.2.3 (1/11/2009)
+        Fix: frameConfig attributes not being passed to IFRAME element.
  * Release: 1.2.2( 11/10/2008)
  *      Fix: setSrc ( {url: url,callback: function(){}....}) style calls were broken.
  * Release: 1.2.1( 11/3/2008)
@@ -1738,7 +1740,7 @@
 
             var f = this.frameConfig ? this.frameConfig.autoCreate || this.frameConfig : {};
 
-            var frCfg = { id : f.id || Ext.id()};
+            var frCfg = Ext.apply(f, { id : f.id || Ext.id()});
             frCfg.name = f.name || frCfg.id;
 
             if(Ext.isIE && Ext.isSecure){
