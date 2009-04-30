@@ -43,6 +43,8 @@
  * </code></pre>
  *
  * <br>
+ * Release: 1.2.4 (4/29/2009)
+ *     Add: Support for Ext 3.0, resize event
  * Release: 1.2.3 (1/11/2009)
         Fix: frameConfig attributes not being passed to IFRAME element.
  * Release: 1.2.2( 11/10/2008)
@@ -71,13 +73,43 @@
 
 (function() {
 
+    var addListener = function () {
+            if (window.addEventListener) {
+                return function(el, eventName, fn, capture) {
+                    el.addEventListener(eventName, fn, !!capture);
+                };
+            } else if (window.attachEvent) {
+                return function(el, eventName, fn, capture) {
+                    el.attachEvent("on" + eventName, fn);
+                };
+            } else {
+                return function() {
+                };
+            }
+        }(),
+       removeListener = function() {
+            if (window.removeEventListener) {
+                return function (el, eventName, fn, capture) {
+                    el.removeEventListener(eventName, fn, (capture));
+                };
+            } else if (window.detachEvent) {
+                return function (el, eventName, fn) {
+                    el.detachEvent("on" + eventName, fn);
+                };
+            } else {
+                return function() {
+                };
+            }
+        }();
+  
+    
     var EV = Ext.lib.Event;
     var MIM;
     /**
    * @class Ext.ux.ManagedIFrame
    * @extends Ext.Element
    * @extends Ext.util.Observable
-   * @version:  1.2.1 - 10/9/2008
+   * @version:  1.2.4 (4/29/2009)
    * @license <a href="http://www.gnu.org/licenses/lgpl.html">LGPL 3.0</a>
    * @author: Doug Hendricks. Forum ID: <a href="http://extjs.com/forum/member.php?u=8730">hendricd</a>
    * @donate <form action="https://www.paypal.com/cgi-bin/webscr" method="post">
@@ -841,25 +873,35 @@
 
             var elcache, h = MIM.getFrameHash(this) || {};
 
-            if (this._hooked && h && (elcache = h.elCache)) {
-
-                for (var id in elcache) {
-                    var el = elcache[id];
-
-                    if (el.removeAllListeners) {
-                        el.removeAllListeners();
-                    }
-                    delete elcache[id];
+            if (this._hooked){
+                if( h && (elcache = h.elCache)) {
+            
+	                for (var id in elcache) {
+	                    var el = elcache[id];
+	
+	                    if (el.removeAllListeners) {
+	                        el.removeAllListeners();
+	                    }
+	                    delete elcache[id];
+	                }
+	                if (h.docEl) {
+	                    h.docEl.removeAllListeners();
+	                    h.docEl = null;
+	                    delete h.docEl;
+	                }
+                    
                 }
-                if (h.docEl) {
-                    h.docEl.removeAllListeners();
-                    h.docEl = null;
-                    delete h.docEl;
+                var w;
+                if(this._frameProxy && (w = this.getWindow())){
+                    removeListener(w, 'focus', this._frameProxy);
+                    removeListener(w, 'blur', this._frameProxy);
+                    removeListener(w, 'resize', this._frameProxy);
+                    removeListener(w, 'unload', this._frameProxy);
                 }
             }
 
             this.CSS = this.CSS ? this.CSS.destroy() : null;
-            this._hooked = this._domReady = this._domFired = false;
+            this._hooked = this._domReady = this._domFired = this._frameAction = this.frameInit = false;
 
         },
         // Private execScript sandbox and messaging interface
@@ -881,9 +923,10 @@
                     var w;
 
                     if(w = this.getWindow()){
-                        EV.doAdd(w, 'focus', this._frameProxy);
-                        EV.doAdd(w, 'blur', this._frameProxy);
-                        EV.doAdd(w, 'unload', this._frameProxy);
+                            addListener(w, 'focus', this._frameProxy);
+                            addListener(w, 'blur', this._frameProxy);
+                            addListener(w, 'resize', this._frameProxy);
+                            addListener(w, 'unload', this._frameProxy);
                     }
 
                     if (this.disableMessaging !== true) {
@@ -1527,7 +1570,7 @@
     /**
      * @class Ext.ux.panel.ManagedIFrame
      * @extends Ext.Panel
-     * @version: 1.2.1
+     * @version: 1.2.4 (4/29/2009)
      * @license <a href="http://www.gnu.org/licenses/lgpl.html">LGPL 3.0</a>
      * @author: Doug Hendricks. Forum ID: <a
      * href="http://extjs.com/forum/member.php?u=8730">hendricd</a> Copyright
@@ -1956,6 +1999,10 @@
                 this.iframe.sendMessage.apply(this.iframe, arguments);
             }
         },
+        /**
+        * @private 
+        */
+        filterOptRe: /^(?:scope|delay|buffer|single|stopEvent|preventDefault|stopPropagation|normalized|args|delegate)$/,
 
         /** @private
          *  relay all defined 'message:tag' event handlers
@@ -2445,7 +2492,8 @@
     /**
      * @class Ext.ux.portlet.ManagedIFrame
      * @extends Ext.ux.panel.ManagedIframe
-     * @version: 1.2 @license <a
+     * @version: 1.2.4 (4/29/2009) 
+     * @license <a
      * href="http://www.gnu.org/licenses/lgpl.html">LGPL 3.0</a> @author: Doug
      * Hendricks. Forum ID: <a
      * href="http://extjs.com/forum/member.php?u=8730">hendricd</a> Copyright
