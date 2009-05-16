@@ -43,6 +43,8 @@
  * </code></pre>
  *
  * <br>
+ * Release: 1.2.5 (5/16/2009)
+ *     Fix: X-frame messaging: needed mixin function (apply) for frames without Ext loaded into them. (thx: livinphp)
  * Release: 1.2.4 (4/29/2009)
  *     Add: Support for Ext 3.0, resize event
  * Release: 1.2.3 (1/11/2009)
@@ -668,6 +670,16 @@
                 return v === null || v === undefined
                         || (!allowBlank ? v === '' : false);
             };
+            var apply = function(o, c, defaults) {
+                if (defaults) { apply(o, defaults); }
+                if (o && c && typeof c == 'object') {
+                    for (var p in c) {
+                        o[p] = c[p];
+                    }
+                }
+                return o;
+            };
+
             window.sendMessage = function(message, tag, origin) {
                 var MIF;
                 if (MIF = arguments.callee.manager) {
@@ -724,7 +736,7 @@
 
                     var k = isEmpty(tag) ? "$" : tag.toLowerCase();
                     tagStack[k] || (tagStack[k] = []);
-                    Ext.apply(fn, {
+                    apply(fn, {
                                 __tag : k,
                                 __single : single || false,
                                 __scope : scope || window,
