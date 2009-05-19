@@ -913,7 +913,7 @@
             }
 
             this.CSS = this.CSS ? this.CSS.destroy() : null;
-            this._hooked = this._domReady = this._domFired = this._frameAction = this.frameInit = false;
+            this._hooked = this._domReady = this._domFired = this._frameAction = false;
 
         },
         // Private execScript sandbox and messaging interface
@@ -1256,7 +1256,6 @@
 
             if (tlm && !tlm.disabled && tlm.masker) {
                 if (forced || (tlm.hideOnReady && this._domReady)) {
-
                     tlm.masker.unmask();
                     tlm._vis = false;
 
@@ -1273,19 +1272,20 @@
 
         loadHandler : function(e, target) {
 
+            
+            target || (target = {});
+            var rstatus = (e && typeof e.type !== 'undefined' ? e.type: this.dom.readyState);
+            //console.log('hanlder ',rstatus,this.frameInit , this._frameAction , this.eventsFollowFrameLinks);
             if (!this.frameInit || (!this._frameAction && !this.eventsFollowFrameLinks)) {
                 return;
             }
-            target || (target = {});
-            var rstatus = (e && typeof e.type !== 'undefined' ? e.type: this.dom.readyState);
-
             switch (rstatus) {
 
                 case 'domready' : // MIF
                     if (this._domReady) { return; }
                     this._domReady = true;
 
-                    if (this._frameAction
+                    if ((this._frameAction || this.eventsFollowFrameLinks) 
                             && this.getDocumentURI() != 'about:blank'
                             && (this._hooked = this._renderHook())) {
                                 // Only raise if sandBox injection succeeded (same origin)
@@ -2341,7 +2341,7 @@
                 if (e.type == 'unload') {
                     this._unHook();
                 }
-
+                
                 if (!be['eventPhase']
                         || (be['eventPhase'] == (be['AT_TARGET'] || 2))) {
                     return this.fireEvent(e.type, e);
