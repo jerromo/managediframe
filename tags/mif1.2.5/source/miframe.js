@@ -43,8 +43,9 @@
  * </code></pre>
  *
  * <br>
- * Release: 1.2.5 (5/16/2009)
+ * Release: 1.2.5 (6/12/2009)
  *     Fix: X-frame messaging: needed mixin function (apply) for frames without Ext loaded into them. (thx: livinphp)
+ *   Added: domReadyRetries cfg option
  * Release: 1.2.4 (4/29/2009)
  *     Add: Support for Ext 3.0, resize event
  * Release: 1.2.3 (1/11/2009)
@@ -111,7 +112,7 @@
    * @class Ext.ux.ManagedIFrame
    * @extends Ext.Element
    * @extends Ext.util.Observable
-   * @version:  1.2.4 (4/29/2009)
+   * @version:  1.2.5 (6/12/2009)
    * @license <a href="http://www.gnu.org/licenses/lgpl.html">LGPL 3.0</a>
    * @author: Doug Hendricks. Forum ID: <a href="http://extjs.com/forum/member.php?u=8730">hendricd</a>
    * @donate <form action="https://www.paypal.com/cgi-bin/webscr" method="post">
@@ -417,6 +418,17 @@
           */
         disableMessaging :  true,
 
+         /**
+          * Maximum number of domready event detection retries for IE.  IE does not provide
+          * a native DOM event to signal when the frames DOM may be manipulated, so a polling process
+          * is used to determine when the documents BODY is available. <p> Certain documents may not contain
+          * a BODY tag:  eg. MHT(rfc/822), XML, or other non-HTML content. Detection polling will stop after this number of 2ms retries 
+          * or when the documentloaded event is raised.</p>
+          * @cfg {Integer} domReadyRetries 
+          * @default 7500 (* 2ms = 15 seconds) 
+          */
+        domReadyRetries   :  7500,
+        
         /**
          * @cfg {String} resetUrl Frame document reset string for use with the {@link #Ext.ux.ManagedIFrame-reset} method.
          * Defaults:<p> For IE on SSL domains - the current value of Ext.SSL_SECURE_URL<p> "about:blank" for all others.
@@ -911,7 +923,7 @@
                     removeListener(w, 'unload', this._frameProxy);
                 }
             }
-
+            MIM._flyweights = {};
             this.CSS = this.CSS ? this.CSS.destroy() : null;
             this._hooked = this._domReady = this._domFired = this._frameAction = false;
 
@@ -1341,7 +1353,9 @@
             if (Ext.isOpera || Ext.isGecko || !this._frameAction) { return; }
             // initialise the counter
             var n = 0, manager = this, domReady = false,
-                b, l, d, max = 300, polling = false,
+                b, l, d, 
+                max = this.domReadyRetries, 
+                polling = false,
                 startLocation = (this.getDocument() || {location : {}}).location.href;
 
             (function() { // DOM polling for IE and others
@@ -1582,7 +1596,7 @@
     /**
      * @class Ext.ux.panel.ManagedIFrame
      * @extends Ext.Panel
-     * @version: 1.2.4 (4/29/2009)
+     * @version: 1.2.5 (6/12/2009)
      * @license <a href="http://www.gnu.org/licenses/lgpl.html">LGPL 3.0</a>
      * @author: Doug Hendricks. Forum ID: <a
      * href="http://extjs.com/forum/member.php?u=8730">hendricd</a> Copyright
@@ -2356,6 +2370,7 @@
                 if (document.addEventListener) {
                       window.removeEventListener("DOMFrameContentLoaded", this.readyHandler, true);
                 }
+                delete this._flyweights;
 
             },
 
@@ -2504,7 +2519,7 @@
     /**
      * @class Ext.ux.portlet.ManagedIFrame
      * @extends Ext.ux.panel.ManagedIframe
-     * @version: 1.2.4 (4/29/2009) 
+     * @version: 1.2.5 (6/12/2009) 
      * @license <a
      * href="http://www.gnu.org/licenses/lgpl.html">LGPL 3.0</a> @author: Doug
      * Hendricks. Forum ID: <a
