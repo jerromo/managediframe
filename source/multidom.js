@@ -1,39 +1,52 @@
 /* global Ext El ElFrame ELD*/    
-/**
+/*
  * ******************************************************************************
  * This file is distributed on an AS IS BASIS WITHOUT ANY WARRANTY; without even
  * the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  * ***********************************************************************************
- * @version 1.0 RC1
- * @license MIT 
- * @author Doug Hendricks. Forum ID: <a href="http://extjs.com/forum/member.php?u=8730">hendricd</a> 
- * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
- * @copyright 2007-2009, Active Group, Inc. All rights reserved.
- * 
  * License: multidom.js is offered under an MIT License.
  * Donations are welcomed: http://donate.theactivegroup.com
- * 
- * @description
- * [Designed For Ext Core and ExtJs Frameworks (using ext-base adapter only) 3.0 or higher ONLY]
- * The multidom library extends (overloads) Ext Core DOM methods and functions to 
- * provide document-targeted access to the documents loaded in external (FRAME/IFRAME) 
- * documents. 
- * 
- * It maintains seperate DOM Element caches (and more) for each document instance encountered by the 
- * framework, permitting safe access to DOM Elements across document instances that may share 
- * the same Element id or name.  In essence, multidom extends the functionality provided by Ext Core
- * into any child document without having to load the Core library into the frame's global context.
- * @example
- * // return the Ext.Element with an id 'someDiv' located in external document hosted by 'iframe'
- * var iframe = Ext.get('myFrame');
- * var div = Ext.get('someDiv', iframe.dom.contentDocument); //Firefox example
- * if(div){
- *   div.center();
- *  }
- * 
+ */
+
+ /**
+  * @class multidom
+  * @version 1.0
+  * @license MIT 
+  * @author Doug Hendricks. Forum ID: <a href="http://extjs.com/forum/member.php?u=8730">hendricd</a> 
+  * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
+  * @copyright 2007-2009, Active Group, Inc. All rights reserved.
+  * @description [Designed For Ext Core and ExtJs Frameworks (using ext-base adapter only) 3.0 or higher ONLY]
+  * The multidom library extends (overloads) Ext Core DOM methods and functions to 
+  * provide document-targeted access to the documents loaded in external (FRAME/IFRAME) 
+  * documents. 
+  * <p>It maintains seperate DOM Element caches (and more) for each document instance encountered by the 
+  * framework, permitting safe access to DOM Elements across document instances that may share 
+  * the same Element id or name.  In essence, multidom extends the functionality provided by Ext Core
+  * into any child document without having to load the Core library into the frame's global context.
+  * <h3>Custom Element classes.</h3>
+  * The Ext.get method is enhanced to support resolution of the custom Ext.Element implementations.
+  * (The ux.ManagedIFrame 2.0 Element class is an example of such a class.) 
+  * <p>For example: If you were retrieving the Ext.Element instance for an IFRAME and the class
+  * Ext.Element.IFRAME were defined:
+  * <pre><code>Ext.get('myFrame')</pre></code>
+  * would return an instance of Ext.Element.IFRAME for 'myFrame' if it were found. 
+  * @example
+   // return the Ext.Element with an id 'someDiv' located in external document hosted by 'iframe'
+   var iframe = Ext.get('myFrame');
+   var div = Ext.get('someDiv', iframe.getFrameDocument()); //Firefox example
+   if(div){
+     div.center();
+    }
+   Note: ux.ManagedIFrame provides an equivalent 'get' method of it's own to access embedded DOM Elements
+   for the document it manages.
+   <pre><code>iframe.get('someDiv').center();</pre></code>
+   
+   Likewise, you can retrieve the raw Element of another document with:
+   var el = Ext.getDom('myDiv', iframe.getFrameDocument());
  */
  
  (function(){   
+    
     
     /*
      * Ext.Element and Ext.lib.DOM enhancements.
@@ -212,19 +225,14 @@
     });
        
    
-    /*
-     * Determine Ext.Element or MIF.Element
-     */
     /**
-    * @private
-    */
+     * @private
+     * Determine Ext.Element[tagName] or Ext.Element (default)
+     */
     var assertClass = function(el){
-        var view;
-        ElFrame || (ElFrame = Ext.ux.ManagedIFrame ? Ext.ux.ManagedIFrame.Element : El);
-        return ('documentElement' in el) &&
-               (view = el.parentWindow || el.defaultView) &&
-                view.frameElement ? ElFrame :
-          (el && 'contentWindow' in el) ? ElFrame : El; 
+        
+        return El[(el.tagName || '-').toUpperCase()] || El;
+        
       };
 
     var libFlyweight;
@@ -232,7 +240,7 @@
         if (!libFlyweight) {
             libFlyweight = new Ext.Element.Flyweight();
         }
-        libFlyweight.dom = doc ? Ext.getDom(el, doc) : el;
+        libFlyweight.dom = doc ? Ext.getDom(el, doc) : Ext.getDom(el);
         return libFlyweight;
     }
    
@@ -246,7 +254,7 @@
 
       get : Ext.overload([
         Ext.get,
-        function(el, doc, elcache){  //cache optimized
+        function(el, doc, elcache){  //named-cache optimized
             try{doc = doc?doc.dom||doc:null;}catch(docErr){doc = null;}
             //resolve from named cache first
             return el && doc ? resolveCache(doc,elcache)._elCache[el.id] || this.get(el, doc) : null ;
@@ -294,7 +302,7 @@
                     ex = cache[id] = new (assertClass(el))(el, null, doc);
                 }
                 return ex;
-            }else if(el instanceof El || el instanceof ElFrame){
+            }else if(el instanceof El || el instanceof El['IFRAME']){
                 
                 el.dom = doc.getElementById(el.id) || el.dom; // refresh dom element in case no longer valid,
                                                               // catch case where it hasn't been appended
@@ -305,7 +313,7 @@
                 return el;
 
             }else if(Ext.isArray(el)){
-                return (assertClass(doc)).select(el);
+                return Ext.get(doc,doc).select(el);
             }
            return null;
 
@@ -1028,63 +1036,6 @@
             return this.fly(Ext.getDom(el, doc), named);
         }
     ]);
-    
-    Ext.override (Ext.Component, {
-	    // private
-	    // default function is not really useful
-	    onRender : function(ct, position){
-	        var doc = this.documentElement || (this.documentElement= ct.getDocument());
-	        if(!this.el && this.autoEl){
-	            if(typeof this.autoEl == 'string'){
-	                this.el = doc.createElement(this.autoEl);
-	            }else{
-	                var div = doc.createElement('div');
-	                Ext.DomHelper.overwrite(div, this.autoEl);
-	                this.el = div.firstChild;
-	            }
-	            if (!this.el.id) {
-	                this.el.id = this.getId();
-	            }
-	        }
-	        if(this.el){
-	            this.el = Ext.get(this.el, doc); //target the containers document context
-	            if(this.allowDomMove !== false){
-	                ct.dom.insertBefore(this.el.dom, position);
-	            }
-	        }
-	    },
-        
-        onDestroy  : function(){
-            this.documentElement = this.container = null;
-        }
-   });
-   
-   Ext.override( Ext.Panel,{
-    // private
-	    createElement : function(name, pnode){
-	        if(this[name]){
-	            pnode.appendChild(this[name].dom);
-	            return;
-	        }
-            var doc = this.documentElement;
-	
-	        if(name === 'bwrap' || this.elements.indexOf(name) != -1){
-	            if(this[name+'Cfg']){
-	                this[name] = Ext.fly(pnode).createChild(this[name+'Cfg']);
-	            }else{
-	                var el = doc.createElement('div');
-	                el.className = this[name+'Cls'];
-	                this[name] = Ext.get(pnode.appendChild(el), doc);
-	            }
-	            if(this[name+'CssClass']){
-	                this[name].addClass(this[name+'CssClass']);
-	            }
-	            if(this[name+'Style']){
-	                this[name].applyStyles(this[name+'Style']);
-	            }
-	        }
-	    }
-   });
     
     /** @sourceURL=<multidom.js> */
     Ext.provide && Ext.provide('multidom');
