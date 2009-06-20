@@ -677,12 +677,9 @@
                 var d; return (d = this.getFrameDocument()) ? Ext.DomQuery.select(selector, d): null;
             },
             
-
             /**
-             * Removes a DOM Element from the embedded documents
-             * @private
+             * Removes a DOM Element from the embedded document
              * @param {Element/String} node The node id or node Element to remove
-             *
              */
             removeNode : function( node) {
                 
@@ -1352,7 +1349,7 @@
 
    });
    
-    ElFrame = Ext.ux.ManagedIFrame.Element;
+    ElFrame = Ext.Element.IFRAME = Ext.Element.FRAME = Ext.ux.ManagedIFrame.Element;
     
     /**
      * Visibility mode constant - Use a classname  to hide element
