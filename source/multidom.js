@@ -53,7 +53,8 @@
      * Primarily provides the ability to interact with any document context
      * (not just the one Ext was loaded into).
      */
-   var El = Ext.Element, ElFrame, ELD = Ext.lib.Dom;
+   var El = Ext.Element, ElFrame, ELD = Ext.lib.Dom, A = Ext.lib.Anim;
+      
    /**
     * @private
     */
@@ -343,10 +344,50 @@
    });      
 
 
-    var propCache = {};
-    var camelRe = /(-[a-z])/gi;
-    var camelFn = function(m, a){ return a.charAt(1).toUpperCase(); };
-    var view = document.defaultView;
+    var propCache = {},
+        camelRe = /(-[a-z])/gi,
+        camelFn = function(m, a){ return a.charAt(1).toUpperCase(); },
+        view = document.defaultView,
+        VISMODE = 'visibilityMode',
+        ELDISPLAY = El.DISPLAY,
+        data = El.data,
+        CSS = Ext.util.CSS;  //Not available in Ext Core.
+    
+    /**
+     * Visibility mode constant - Use a static className to hide element
+     * @static
+     */
+    El.NOSIZE  = 3; //Compat for previous Ext releases  
+    El.ASCLASS = 3;
+    
+    if(CSS){
+      Ext.onReady(function(){
+	        CSS.getRule('.x-hide-nosize') || //already defined?
+	            CSS.createStyleSheet('.x-hide-nosize{height:0px!important;width:0px!important;border:none!important;zoom:1;}.x-hide-nosize * {height:0px!important;width:0px!important;border:none!important;zoom:1;}');
+	        CSS.refreshCache();
+      });
+    }
+      
+   /**
+    * Visibility class - Designed to set an Elements width and height to zero (or other CSS rule)
+    * This important rule solves many of the <object/iframe>.reInit issues encountered
+    * when setting display:none on an upstream(parent) element.
+    * This default rule enables the new Component hideMode:'asclass'. The rule is designed to
+    * set height/width to 0 (or other strategy) cia CSS if hidden or collapsed.
+    * Additional selectors also hide nested DOM Elements within layouts to prevent
+    * container and <object, img, iframe> bleed-thru.
+    * 
+    * Notes: Ext Core does not have the Ext.util.CSS singleton (as the full Ext framework does). 
+    * An equivalent style Rule must be added to an Ext Core page similar to:
+    * <pre><code>.x-hide-nosize, .x-hide-nosize * {height:0px!important;width:0px!important;border:none!important;zoom:1;}
+    * </code></pre>
+    * which matched the visibilityCls property set on the Element Class or instance.
+    * (Or you can define a strategy of your own).
+    * @static
+    * @type String
+    * @default 'x-hide-nosize'
+    */
+    El.visibilityCls = 'x-hide-nosize';
 
     El.addMethods({
         /**
@@ -354,6 +395,83 @@
          */
         getDocument : function(){
            return ELD.getDocument(this);  
+        },
+        
+       /**
+        * Gets the element's visibility mode. 
+        * @return {Number} Ext.Element[VISIBILITY, DISPLAY, ASCLASS]
+        */
+        getVisibilityMode :  function(){  
+                
+                var dom = this.dom, 
+                    mode = Ext.isFunction(data) ? data(dom,VISMODE) : this[VISMODE];
+                if(mode === undefined){
+                   mode = 1;
+                   Ext.isFunction(data) ? data(dom, VISMODE, mode) : (this[VISMODE] = mode);
+                }
+                return mode;
+           },
+                  
+        setVisible : function(visible, animate){
+            var me = this,
+                dom = me.dom,
+                visMode = me.getVisibilityMode();
+                
+            if(!animate || !A){
+                if(visMode === El.DISPLAY){
+                    me.setDisplayed(visible);
+                }else if(visMode === El.VISIBILITY){
+                    me.fixDisplay();
+                    dom.style.visibility = visible ? "visible" : "hidden";
+                }else if(visMode === El.ASCLASS){
+                    me[visible?'removeClass':'addClass'](me.visibilityCls || El.visibilityCls);
+                }
+
+            }else{
+               
+                if(visible){
+                    me.setOpacity(.01);
+                    me.setVisible(true);
+                }
+                me.anim({opacity: { to: (visible?1:0) }},
+                      me.preanim(arguments, 1),
+                      null, .35, 'easeIn', function(){
+                         if(!visible){
+                             if(visMode === El.DISPLAY){
+                                 dom.style.display = "none";
+                             }else if(visMode === El.VISIBILITY){
+                                 dom.style.visibility = "hidden";
+                             }else if(visMode === El.ASCLASS){
+                                 me.addClass(me.visibilityCls || El.visibilityCls);
+                             }
+                             me.setOpacity(1);
+                         }
+                     });
+            }
+            return me;
+        },
+
+        /**
+         * Checks whether the element is currently visible using both visibility, display, and nosize class properties.
+         * @param {Boolean} deep (optional) True to walk the dom and see if parent elements are hidden (defaults to false)
+         * @return {Boolean} True if the element is currently visible, else false
+         */
+        isVisible : function(deep) {
+            var vis = !( this.getStyle("visibility") === "hidden" || 
+                         this.getStyle("display") === "none" || 
+                         this.hasClass(this.visibilityCls || El.visibilityCls));
+            if(deep && vis){
+                var p = this.dom.parentNode;
+                while(p && p.tagName.toLowerCase() !== "body"){
+                    if(!Ext.fly(p, '_isVisible').isVisible()){
+                        vis = false;
+                        break;
+                    }
+                    p = p.parentNode;
+                }
+                delete El._flyweights['_isVisible']; //orphan reference cleanup
+            }
+            return vis;
         },
         
         /**
@@ -861,7 +979,7 @@
         getDocument : function(el, accessTest){
           var dom= null;
           try{
-            dom = Ext.getDom(el); //will fail if El.dom is non "same-origin" document
+            dom = Ext.getDom(el, null); //will fail if El.dom is non "same-origin" document
           }catch(ex){}
 
           var isDoc = Ext.isDocument(dom);

@@ -2503,7 +2503,6 @@
                 rules.push('.ux-mif-shim-on{width:100%;height:100%;display:block;zoom:1;}');
                 rules.push('.ext-ie6 .ux-mif-shim{margin-left:5px;margin-top:3px;}');
             }
-            CSS.getRule('.x-hide-nosize')|| (rules.push('.x-hide-nosize,.x-hide-nosize *{height:0px!important;width:0px!important;border:none;}'));
 
             if (!!rules.length) {
                 CSS.createStyleSheet(rules.join(' '));
