@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<project path="" name="ux.ManagedIFrame" author="Active Group, Inc" version="2.0" copyright="ux.ManagedIFrame.* $version&#xD;&#xA;Copyright(c) 2007-2009, $author.&#xD;&#xA;licensing@theactivegroup.com&#xD;&#xA;&#xD;&#xA;http://licensing.theactivegroup.com&#xD;&#xA;&#xD;&#xA;" output="D:\Webdev\DF\MIF\trunk\source" source="False" source-dir="$output\source" minify="False" min-dir="$output\build" doc="False" doc-dir="$output\docs" master="true" master-file="$output\yui-ext.js" zip="true" zip-file="$output\yuo-ext.$version.zip">
+<project path="" name="ux.ManagedIFrame" author="Active Group, Inc" version="2.0" copyright="ux.ManagedIFrame.* $version&#xD;&#xA;Copyright(c) 2007-2009, $author.&#xD;&#xA;licensing@theactivegroup.com&#xD;&#xA;&#xD;&#xA;http://licensing.theactivegroup.com&#xD;&#xA;&#xD;&#xA;" output="D:\Webdev\DF\MIF\trunk\source\build" source="False" source-dir="$output\source" minify="False" min-dir="$output\build" doc="False" doc-dir="$output\docs" master="true" master-file="$output\yui-ext.js" zip="true" zip-file="$output\yuo-ext.$version.zip">
   <directory name="" />
   <file name="uxmedia.js" path="" />
   <file name="mif.js" path="" />
