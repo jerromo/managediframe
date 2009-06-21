@@ -227,7 +227,8 @@ Ext.ux.plugin.VisibilityMode = function(opt) {
     
     
     
-   var El = Ext.Element, ElFrame, ELD = Ext.lib.Dom;
+   var El = Ext.Element, ElFrame, ELD = Ext.lib.Dom, A = Ext.lib.Anim;
+      
    
    var _documents= {
         $_top : {_elCache : El.cache,
@@ -498,15 +499,104 @@ Ext.ux.plugin.VisibilityMode = function(opt) {
    });      
 
 
-    var propCache = {};
-    var camelRe = /(-[a-z])/gi;
-    var camelFn = function(m, a){ return a.charAt(1).toUpperCase(); };
-    var view = document.defaultView;
+    var propCache = {},
+        camelRe = /(-[a-z])/gi,
+        camelFn = function(m, a){ return a.charAt(1).toUpperCase(); },
+        view = document.defaultView,
+        VISMODE = 'visibilityMode',
+        ELDISPLAY = El.DISPLAY,
+        data = El.data,
+        CSS = Ext.util.CSS;  //Not available in Ext Core.
+    
+    
+    El.NOSIZE  = 3; //Compat for previous Ext releases  
+    El.ASCLASS = 3;
+    
+    if(CSS){
+      Ext.onReady(function(){
+	        CSS.getRule('.x-hide-nosize') || //already defined?
+	            CSS.createStyleSheet('.x-hide-nosize{height:0px!important;width:0px!important;border:none!important;zoom:1;}.x-hide-nosize * {height:0px!important;width:0px!important;border:none!important;zoom:1;}');
+	        CSS.refreshCache();
+      });
+    }
+      
+   
+    El.visibilityCls = 'x-hide-nosize';
 
     El.addMethods({
         
         getDocument : function(){
            return ELD.getDocument(this);  
+        },
+        
+       
+        getVisibilityMode :  function(){  
+                
+                var dom = this.dom, 
+                    mode = Ext.isFunction(data) ? data(dom,VISMODE) : this[VISMODE];
+                if(mode === undefined){
+                   mode = 1;
+                   Ext.isFunction(data) ? data(dom, VISMODE, mode) : (this[VISMODE] = mode);
+                }
+                return mode;
+           },
+                  
+        setVisible : function(visible, animate){
+            var me = this,
+                dom = me.dom,
+                visMode = me.getVisibilityMode();
+                
+            if(!animate || !A){
+                if(visMode === El.DISPLAY){
+                    me.setDisplayed(visible);
+                }else if(visMode === El.VISIBILITY){
+                    me.fixDisplay();
+                    dom.style.visibility = visible ? "visible" : "hidden";
+                }else if(visMode === El.ASCLASS){
+                    me[visible?'removeClass':'addClass'](me.visibilityCls || El.visibilityCls);
+                }
+
+            }else{
+               
+                if(visible){
+                    me.setOpacity(.01);
+                    me.setVisible(true);
+                }
+                me.anim({opacity: { to: (visible?1:0) }},
+                      me.preanim(arguments, 1),
+                      null, .35, 'easeIn', function(){
+                         if(!visible){
+                             if(visMode === El.DISPLAY){
+                                 dom.style.display = "none";
+                             }else if(visMode === El.VISIBILITY){
+                                 dom.style.visibility = "hidden";
+                             }else if(visMode === El.ASCLASS){
+                                 me.addClass(me.visibilityCls || El.visibilityCls);
+                             }
+                             me.setOpacity(1);
+                         }
+                     });
+            }
+            return me;
+        },
+
+        
+        isVisible : function(deep) {
+            var vis = !( this.getStyle("visibility") === "hidden" || 
+                         this.getStyle("display") === "none" || 
+                         this.hasClass(this.visibilityCls || El.visibilityCls));
+            if(deep && vis){
+                var p = this.dom.parentNode;
+                while(p && p.tagName.toLowerCase() !== "body"){
+                    if(!Ext.fly(p, '_isVisible').isVisible()){
+                        vis = false;
+                        break;
+                    }
+                    p = p.parentNode;
+                }
+                delete El._flyweights['_isVisible']; //orphan reference cleanup
+            }
+            return vis;
         },
         
         
@@ -940,7 +1030,7 @@ Ext.ux.plugin.VisibilityMode = function(opt) {
         getDocument : function(el, accessTest){
           var dom= null;
           try{
-            dom = Ext.getDom(el); //will fail if El.dom is non "same-origin" document
+            dom = Ext.getDom(el, null); //will fail if El.dom is non "same-origin" document
           }catch(ex){}
 
           var isDoc = Ext.isDocument(dom);
@@ -2748,7 +2838,6 @@ Ext.ux.plugin.VisibilityMode = function(opt) {
                 rules.push('.ux-mif-shim-on{width:100%;height:100%;display:block;zoom:1;}');
                 rules.push('.ext-ie6 .ux-mif-shim{margin-left:5px;margin-top:3px;}');
             }
-            CSS.getRule('.x-hide-nosize')|| (rules.push('.x-hide-nosize,.x-hide-nosize *{height:0px!important;width:0px!important;border:none;}'));
 
             if (!!rules.length) {
                 CSS.createStyleSheet(rules.join(' '));
