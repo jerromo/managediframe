@@ -60,10 +60,10 @@
 		      getVisibilityMode :  function(){  
 	                
 		            var dom = this.dom, 
-	                    mode = Ext.isFunction(data) ? data(dom,VISMODE) : this[VISMODE];
+	                    mode = Ext.type(data)=='function' ? data(dom,VISMODE) : this[VISMODE];
 	                if(mode === undefined){
 	                   mode = 1;
-	                   Ext.isFunction(data) ? data(dom, VISMODE, mode) : (this[VISMODE] = mode);
+	                   mode = Ext.type(data)=='function' ? data(dom, VISMODE, mode) : (this[VISMODE] = mode);
 	                }
 	                return mode;
 	           },
@@ -143,7 +143,7 @@
       * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
       * @singleton
       * @static
-      * @description This plugin provides an alternate visibility mode to Ext.Elements and a new hideMode for Ext.Components.<br />
+      * @desc This plugin provides an alternate visibility mode to Ext.Elements and a new hideMode for Ext.Components.<br />
       * <p>It is generally designed for use with all browsers <b>except</b> Internet Explorer, but may used on that Browser as well.
       * <p>If included in a Component as a plugin, it sets it's hideMode to 'nosize' and provides a new supported
       * CSS rule that sets the height and width of an element and all child elements to 0px (rather than
