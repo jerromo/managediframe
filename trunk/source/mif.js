@@ -1199,14 +1199,17 @@
                         p.addClass("x-masked-relative");
                 }
                 //causes frame re-init after reflow on other browsers
-                Ext.isIE && p.addClass("x-masked-relative");  
+                p.addClass("x-masked-relative");  
                 
                 this._mask = Ext.DomHelper.append(p, {cls: maskCls || this.cls+"-el-mask"} , true);
-                
+                this._mask.setDisplayed(true);
                 if(typeof msg == 'string'){
-                    var mm = this._maskMsg = Ext.DomHelper.append(p, {cls: msgCls || this.cls+"-el-mask-msg" , cn:{tag:'div', html:msg}}, true);
-                    mm.setDisplayed(true);
-                    mm.center(this._mask);
+                     this._maskMsg = Ext.DomHelper.append(p, {cls: msgCls || this.cls+"-el-mask-msg" , style: {display:'none'}, cn:{tag:'div', html:msg}}, true);
+                    (function(){
+                       this._mask && 
+                        this._maskMsg && 
+                          this._maskMsg.setDisplayed(true).center(p);
+                    }).defer(400,this);
                 }
                 if(Ext.isIE && !(Ext.isIE7 && Ext.isStrict) && this.getStyle('height') == 'auto'){ // ie will not expand full height automatically
                     this._mask.setSize(undefined, this._mask.getHeight());
