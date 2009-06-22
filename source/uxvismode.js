@@ -1,14 +1,7 @@
      
  Ext.namespace('Ext.ux.plugin');
  Ext.onReady(function(){
-    var CSS = Ext.util.CSS;
-
-    if(CSS && !Ext.isIE && this.fixMaximizedWindow !== false){
-        //Prevent overflow:hidden (reflow) transitions when an Ext.Window is maximize.
-        CSS.updateRule ( '.x-window-maximized-ct', 'overflow', '');
-    }
-
-
+    
     /* This important rule solves many of the <object/iframe>.reInit issues encountered
     * when setting display:none on an upstream(parent) element (on all Browsers except IE).
     * This default rule enables the new Panel:hideMode 'nosize'. The rule is designed to
@@ -16,7 +9,7 @@
     * Additional selectors also hide 'x-panel-body's within layouts to prevent
     * container and <object, img, iframe> bleed-thru.
     */
-
+    var CSS = Ext.util.CSS;
     if(CSS){ 
         CSS.getRule('.x-hide-nosize') || //already defined?
             CSS.createStyleSheet('.x-hide-nosize{height:0px!important;width:0px!important;border:none!important;zoom:1;}.x-hide-nosize * {height:0px!important;width:0px!important;border:none!important;zoom:1;}');
@@ -174,6 +167,14 @@
  Ext.ux.plugin.VisibilityMode = function(opt) {
 
     Ext.apply(this, opt||{});
+    
+    var CSS = Ext.util.CSS;
+
+    if(CSS && !Ext.isIE && this.fixMaximizedWindow !== false && !Ext.ux.plugin.VisibilityMode.MaxWinFixed){
+        //Prevent overflow:hidden (reflow) transitions when an Ext.Window is maximize.
+        CSS.updateRule ( '.x-window-maximized-ct', 'overflow', '');
+        Ext.ux.plugin.VisibilityMode.MaxWinFixed = true;  //only updates the CSS Rule once.
+    }
     
    };
 
