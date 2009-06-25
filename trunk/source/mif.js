@@ -73,7 +73,8 @@
             return test;
         };
 
-  Ext.ns('Ext.ux.ManagedIFrame');
+  Ext.ns('Ext.ux.ManagedIFrame', 'Ext.ux.plugin');
+  
   var MIM, MIF = Ext.ux.ManagedIFrame, MIFC;
   var frameEvents = ['documentloaded',
                      'domready',
@@ -402,15 +403,11 @@
 		        
 		        //slight delay for masking
 		        (function(){
-                    
 		            form.submit();
-		            if(hiddens){ // remove dynamic params
-		                for(var i = 0, len = hiddens.length; i < len; i++){
-		                    Ext.removeNode(hiddens[i]);
-		                }
-		            }
-		
-		            //Remove if dynamically generated.
+                    // remove dynamic inputs
+		            hiddens && Ext.each(hiddens, Ext.removeNode, Ext);
+
+                    //Remove if dynamically generated.
 		            Ext.fly(form,'_dynaForm').hasClass('x-hidden') && Ext.removeNode(form);
 		            this.hideMask(true);
 		        }).defer(100, this);
@@ -558,7 +555,7 @@
                 content = Ext.DomHelper.markup(content || '');
                 content = loadScripts === true ? content : content.replace(this.scriptRE, "");
                 var doc;
-                if ((doc = this.getFrameDocument()) && !!content.length) {
+                if ((doc = this.getFrameDocument()) && this.domWritable() && !!content.length) {
                     this._unHook();
                     this.src = null;
                     this.showMask();
@@ -583,9 +580,9 @@
             * @return {Ext.ux.ManagedIFrame.Updater} The Updater
             */
             getUpdater : function(){
-               this.updateManager || 
+               return this.updateManager || 
                     (this.updateManager = new MIF.Updater(this));
-                return this.updateManager; 
+                
             },
 
             /**
@@ -629,12 +626,8 @@
              *         element was found)
              */
             fly : function(el, named) {
-                named = named || '_global';
-                el = this.getDom(el);
-                if (!el) { return null;}
-                MIM._flyweights[named] || (MIM._flyweights[named] = new Ext.Element.Flyweight());
-                MIM._flyweights[named].dom = el;
-                return MIM._flyweights[named];
+                var doc = this.getFrameDocument();
+                return doc ? Ext.fly(el,named, doc) : null;
             },
 
             /**
@@ -695,7 +688,7 @@
 		                el = null;
 		            }
 		            var D;
-                    if(Ext.isDocument(D = this.getFrameDocument(),true)){
+                    if(this.domWritable()){
 			            if(Ext.isIE && !Ext.isIE8){
 			                var d = D.createElement('div');
 			                d.appendChild(dom);
@@ -904,7 +897,8 @@
              * Event Listeners set.
              */
             domWritable : function() {
-                return !!this._windowContext;
+                return !!Ext.isDocument(this.getFrameDocument(),true) //test access
+                    && !!this._windowContext;
             },
 
             /**
@@ -952,7 +946,7 @@
                         });
                 try {
                     var head, script, doc = this.getFrameDocument();
-                    if (doc && typeof doc.getElementsByTagName != 'undefined') {
+                    if (doc && this.domWritable() && typeof doc.getElementsByTagName != 'undefined') {
                         if (!(head = doc.getElementsByTagName("head")[0])) {
                             // some browsers (Webkit, Safari) do not auto-create
                             // head elements during document.write
@@ -1034,8 +1028,6 @@
                 //raise internal event regardless of state.
                 obv.fireEvent.call( obv,"_docready", eventName , this._domReady , this._domFired);
                 
-                (w = this.getWindow()) && w.focus(); 
-
                 this._domReady = true;
                 (D = this.getDoc()) && (D.isReady = true);
                 if (!this._domFired &&
@@ -1059,6 +1051,7 @@
                 obv.fireEvent.defer(1, obv,["_docload", this]);
                 if(!this._isReset && (this._frameAction || this.eventsFollowFrameLinks)){
                     !this._domFired && this._frameAction && this._onDocReady('domready');
+                    Ext.isIE && (w = this.getWindow()) && w.focus();
                     obv.fireEvent.defer(1, obv, ["documentloaded", this]);
                     this._frameAction = false;
                 }
@@ -1198,18 +1191,21 @@
                     !p.select('iframe,frame,object,embed').elements.length){
                         p.addClass("x-masked-relative");
                 }
-                //causes frame re-init after reflow on other browsers
-                p.addClass("x-masked-relative");  
+                
+                p.addClass("x-masked");
                 
                 this._mask = Ext.DomHelper.append(p, {cls: maskCls || this.cls+"-el-mask"} , true);
                 this._mask.setDisplayed(true);
+                this._mask._agent = p;
+                
                 if(typeof msg == 'string'){
-                     this._maskMsg = Ext.DomHelper.append(p, {cls: msgCls || this.cls+"-el-mask-msg" , style: {display:'none'}, cn:{tag:'div', html:msg}}, true);
-                    (function(){
+                     this._maskMsg = Ext.DomHelper.append(p, {cls: msgCls || this.cls+"-el-mask-msg" , style: {visibility:'hidden'}, cn:{tag:'div', html:msg}}, true);
+                     this._maskMsg.setVisibilityMode(Ext.Element.VISIBILITY);
+                     (function(){
                        this._mask && 
                         this._maskMsg && 
-                          this._maskMsg.setDisplayed(true).center(p);
-                    }).defer(400,this);
+                          this._maskMsg.setVisible(true).center(p);
+                      }).defer(10,this);
                 }
                 if(Ext.isIE && !(Ext.isIE7 && Ext.isStrict) && this.getStyle('height') == 'auto'){ // ie will not expand full height automatically
                     this._mask.setSize(undefined, this._mask.getHeight());
@@ -1222,9 +1218,9 @@
              */
             unmask : function(){
                 
-                var w;
+                var a;
                 if(this._mask){
-                    (w = this._mask.parent()) && w.removeClass("x-masked-relative");
+                    (a = this._mask._agent) && a.removeClass(["x-masked-relative","x-masked"]);
                     if(this._maskMsg){
                         this._maskMsg.remove();
                         delete this._maskMsg;
@@ -1435,7 +1431,6 @@
         animCollapse  : Ext.isIE ,
 
         animFloat  : Ext.isIE ,
-        
         
         /**
          * @cfg {object} frameConfig Frames DOM configuratio options
@@ -1823,16 +1818,21 @@
             
             /** @private */
             initComponent : function() {
-                this.monitorResize || (this.monitorResize = !!this.fitToParent);
-                this.hideMode === 'nosize' && Ext.ux.plugin && Ext.ux.plugin.VisibilityMode && 
-                  (this.plugins = 
-                     [new Ext.ux.plugin.VisibilityMode(
-                        {hideMode:'nosize',
-                         elements : ['bwrap']
-                        })]
-                     .concat(this.plugins ||[])
-                  );
-                MIF.Component.superclass.initComponent.call(this);
+                var C = {
+	                monitorResize : this.monitorResize || (this.monitorResize = !!this.fitToParent),
+	                plugins : (this.plugins ||[]).concat(
+	                    this.hideMode === 'nosize' && Ext.ux.plugin.VisibilityMode ? 
+		                    [new Ext.ux.plugin.VisibilityMode(
+		                        {hideMode :'nosize',
+		                         elements : ['bwrap']
+		                        })] : [] )
+                  };
+                  
+                MIF.Component.superclass.initComponent.call(
+                  Ext.apply(this,
+                    Ext.apply(this.initialConfig, C)
+                    ));
+                    
                 this.setMIFEvents();
             },   
 
