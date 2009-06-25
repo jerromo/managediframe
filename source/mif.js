@@ -5,7 +5,7 @@
  * the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  * ***********************************************************************************
  * @version 2.0 RC1
- * [For Ext 3.0 or higher only]
+ * [For Ext 3.0 RC2.1 or higher only]
  *
  * License: ux.ManagedIFrame, ux.ManagedIFrame.Panel, ux.ManagedIFrame.Window  
  * are licensed under the terms of the Open Source GPL 3.0 license:
@@ -60,6 +60,10 @@
   //assert multidom support: REQUIRED for Ext 3 or higher!
   if(typeof ELD.getDocument != 'function'){
      throw "MIF 2.0 requires multidom support" ;
+  }
+  //assert Ext 3 SVN/RC2.1 or higher!
+  if(Ext.version < 3 || typeof Ext.Element.data != 'function'){
+     throw "MIF 2.0 requires Ext 3.0 SVN/RC2.1 or higher." ;
   }
   
   Ext.isDocument = function(obj , testOrigin){
@@ -555,7 +559,7 @@
                 content = Ext.DomHelper.markup(content || '');
                 content = loadScripts === true ? content : content.replace(this.scriptRE, "");
                 var doc;
-                if ((doc = this.getFrameDocument()) && this.domWritable() && !!content.length) {
+                if ((doc = this.getFrameDocument()) && !!content.length) {
                     this._unHook();
                     this.src = null;
                     this.showMask();
@@ -678,6 +682,10 @@
                 
                 var dom = n ? n.dom || n : null;
 		         if(dom && dom.parentNode && dom.tagName != 'BODY'){
+                    
+                    if(!dom.ownerDocument || dom.ownerDocument != this.getFrameDocument()){
+                        throw 'document context exception';
+                    }
 		            var el, docCache = this._domCache;
 		            if(docCache && (el = docCache._elCache[dom.id])){
 		                //clear out any references from the El.cache(s)
@@ -946,7 +954,7 @@
                         });
                 try {
                     var head, script, doc = this.getFrameDocument();
-                    if (doc && this.domWritable() && typeof doc.getElementsByTagName != 'undefined') {
+                    if (doc && typeof doc.getElementsByTagName != 'undefined') {
                         if (!(head = doc.getElementsByTagName("head")[0])) {
                             // some browsers (Webkit, Safari) do not auto-create
                             // head elements during document.write
@@ -1465,6 +1473,8 @@
         },
         
         stateEvents : ['documentloaded'],
+        
+        stateful    : false,
         
         /**
          * Sets the autoScroll state for the frame.
