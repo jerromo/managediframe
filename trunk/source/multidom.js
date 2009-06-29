@@ -66,7 +66,7 @@
     /**
     * @private
     */                          
-    var resolveCache = ELD.resolveCache = function(doc, cacheId){
+     resolveCache = ELD.resolveCache = function(doc, cacheId){
         doc = ELD.getDocument(doc);
 
         //Use Ext.Element.cache for top-level document
@@ -93,7 +93,7 @@
    Ext.removeNode =  function(n){
          var dom = n ? n.dom || n : null;
          if(dom && dom.parentNode && dom.tagName != 'BODY'){
-            var el, docCache = resolveCache(dom);
+            var el, docCache = resolveCache(ELD.getDocument(dom));
             if(el = docCache._elCache[dom.id]){
                 
                 //clear out any references from the El.cache(s)
@@ -510,7 +510,7 @@
 	             Ext.removeNode(n);
 	             n = nx;
 	         }
-             delete Ext.Element._flyweights['_cleanser']; //orphan reference cleanup
+             delete El._flyweights['_cleanser']; //orphan reference cleanup
 	         this.isCleansed = true;
 	         return this;
 	     },
@@ -1145,16 +1145,16 @@
      * @private
      * Overload Ext.fly to support targeted document contexts
      */
-    Ext.fly = Ext.overload([
-        Ext.fly,  // existing 2 arg form
+    Ext.fly = El.fly = Ext.overload([
+        El.fly,  // existing 2 arg form
         function(el){
-            return this.fly(el, null);
+            return El.fly(el, null);
         },
         function(el,named,doc){
-            return this.fly(Ext.getDom(el, doc), named);
+            return El.fly(Ext.getDom(el, doc), named);
         }
     ]);
-    
+        
     /** @sourceURL=<multidom.js> */
     Ext.provide && Ext.provide('multidom');
  })();
