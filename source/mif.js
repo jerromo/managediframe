@@ -579,6 +579,40 @@
             },
             
             /**
+             * Executes a Midas command on the current document, current selection, or the given range.
+             * @param {String} command The command string to execute in the frame's document context.
+             * @param {Booloean} userInterface (optional) True to enable user interface (if supported by the command)
+             * @param {Mixed} value (optional)
+             * @param {Boolean} validate If true, the command is validated to ensure it's invocation is permitted.
+             * @return {Boolean} indication whether command execution succeeded
+             */
+            execCommand : function(command, userInterface, value, validate){
+               var doc, assert;
+               if ((doc = this.getFrameDocument()) && !!command) {
+                  try{
+                      Ext.isIE && this.getWindow().focus();
+	                  assert = validate && Ext.isFunction(doc.queryCommandEnabled) ? 
+	                    doc.queryCommandEnabled(command) : true;
+                  
+                      return assert && doc.execCommand(command, !!userInterface, value);
+                  }catch(eex){return false;}
+               }
+               return false;
+                
+            },
+
+            /**
+             * Sets the current DesignMode attribute of the Frame's document
+             * @param {Boolean/String} active True (or "on"), to enable designMode
+             * 
+             */
+            setDesignMode : function(active){
+               var doc;
+               (doc = this.getFrameDocument()) && 
+                 (doc.designMode = (/on|true/i).test(String(active))?'on':'off');
+            },
+            
+            /**
             * Gets this element's Updater
             * 
             * @return {Ext.ux.ManagedIFrame.Updater} The Updater
