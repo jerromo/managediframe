@@ -1248,14 +1248,16 @@
             this._mask.setDisplayed(true);
             this._mask._agent = p;
 
+            var delay = (this.loadMask ? this.loadMask.delay : 0) || 10;
+
             if(typeof msg == 'string'){
                  this._maskMsg = Ext.DomHelper.append(p, {cls: msgCls || 'ext-el-mask-msg x-mask-loading' , style: {visibility:'hidden'}, cn:{tag:'div', html:msg}}, true);
                  this._maskMsg.setVisibilityMode(Ext.Element.VISIBILITY);
                  (function(){
                    this._mask &&
                     this._maskMsg &&
-                      this._maskMsg.setVisible(true).center(p);
-                  }).defer(5,this);
+                      this._maskMsg.center(p).setVisible(true);
+                  }).defer(delay,this);
             }
             if(Ext.isIE && !(Ext.isIE7 && Ext.isStrict) && this.getStyle('height') == 'auto'){ // ie will not expand full height automatically
                 this._mask.setSize(undefined, this._mask.getHeight());
