@@ -760,7 +760,7 @@
                                     + (Ext.isIE
                                             ? 'window'
                                             : '{eval:function(s){return eval(s);}}')
-                                    + ';})();')) {
+                                    + ';})()')) {
                         var w;
                         if(w = this.getWindow()){
                             this._frameProxy || (this._frameProxy = this._eventProxy.createDelegate(this));    
@@ -1006,8 +1006,10 @@
                         }
                     }
                 } catch (ex) {
+                    this._observable.fireEvent.call(this._observable, 'exception', this, ex);
 
-                    this._observable.fireEvent.call(this._observable,'exception', this, ex);
+                }finally{
+                    script = head = null;
                 }
                 return false;
             },
@@ -1087,7 +1089,7 @@
              * @param {String} eventName
              */
             _onDocLoaded  : function(eventName ){
-                var obv = this._observable;
+                var obv = this._observable, w;
                 // not going to wait for the event chain, as it's not
                 // cancellable anyhow.
                 obv.fireEvent.defer(1, obv,["_docload", this]);
@@ -1241,13 +1243,15 @@
                 this._mask._agent = p;
                 
                 if(typeof msg == 'string'){
+                     var delay = (this.loadMask ? this.loadMask.delay : 0) || 10;
+
                      this._maskMsg = Ext.DomHelper.append(p, {cls: msgCls || this.cls+"-el-mask-msg" , style: {visibility:'hidden'}, cn:{tag:'div', html:msg}}, true);
                      this._maskMsg.setVisibilityMode(Ext.Element.VISIBILITY);
                      (function(){
                        this._mask && 
                         this._maskMsg && 
-                          this._maskMsg.setVisible(true).center(p);
-                      }).defer(10,this);
+                          this._maskMsg.center(p).setVisible(true);
+                      }).defer(delay,this);
                 }
                 if(Ext.isIE && !(Ext.isIE7 && Ext.isStrict) && this.getStyle('height') == 'auto'){ // ie will not expand full height automatically
                     this._mask.setSize(undefined, this._mask.getHeight());
