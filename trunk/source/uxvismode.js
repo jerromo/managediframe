@@ -157,7 +157,7 @@
     
        //or, Fix a specific Container only and all of it's child items:
     
-        var V = new Ext.ux.plugin.VisibilityMode({hideMode:'nosize', bubble : false }) ;
+        var V = new Ext.ux.plugin.VisibilityMode({hideMode:'nosize'}) ;
         new Ext.TabPanel({
          plugins     : V,
          defaults    :{ plugins: V },

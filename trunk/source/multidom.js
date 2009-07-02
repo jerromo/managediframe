@@ -66,7 +66,7 @@
     /**
     * @private
     */                          
-     resolveCache = ELD.resolveCache = function(doc, cacheId){
+    var resolveCache = ELD.resolveCache = function(doc, cacheId){
         doc = ELD.getDocument(doc);
 
         //Use Ext.Element.cache for top-level document
