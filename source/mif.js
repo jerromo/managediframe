@@ -1,5 +1,6 @@
 /* global Ext */
 /*
+ * Copyright 2007-2009, Active Group, Inc.  All rights reserved.
  * ******************************************************************************
  * This file is distributed on an AS IS BASIS WITHOUT ANY WARRANTY; without even
  * the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.

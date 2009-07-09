@@ -120,6 +120,7 @@
     };
         
      var overload = function(pfn, fn ){
+           fn = typeof fn == 'function' ? fn : function t(){};
            var f = typeof pfn === 'function' ? pfn : function t(){};
            var ov = f._ovl; //call signature hash
            if(!ov){
@@ -160,12 +161,16 @@
         
         /**
          * HTMLDocument assertion with optional accessibility testing
+         * @param {HTMLELement} el The DOM Element to test
+         * @param {Boolean} testOrigin (optional) True to test "same-origin" access
+         * 
          */
-        isDocument : function(obj, testOrigin){
-             var test = Object.prototype.toString.apply(obj) == '[object HTMLDocument]' || (obj && obj.nodeType == 9);
+        isDocument : function(el, testOrigin){
+            
+            var test = Object.prototype.toString.apply(el) == '[object HTMLDocument]' || (el && el.nodeType == 9);
             if(test && !!testOrigin){
                 try{
-                    test = test && !!obj.location;
+                    test = !!el.location;
                 }
                 catch(e){return false;}
             }
@@ -352,6 +357,10 @@
         ELDISPLAY = El.DISPLAY,
         data = El.data,
         CSS = Ext.util.CSS;  //Not available in Ext Core.
+    
+    function chkCache(prop) {
+        return propCache[prop] || (propCache[prop] = prop == 'float' ? propFloat : prop.replace(camelRe, camelFn));
+    };
     
     /**
      * Visibility mode constant - Use a static className to hide element
@@ -580,32 +589,26 @@
          * @return {String} The current value of the style property for this element.
          */
         getStyle : function(){
-            var gs = 
+            var getStyle = 
              view && view.getComputedStyle ?
                 function GS(prop){
-                    var el = this.dom, v, cs, camel;
-                    if(prop == 'float'){
-                        prop = "cssFloat";
-                    }
-                    
-                    if(v = el.style[prop]){
-                        return v;
-                    }
-                    var D = this.getDocument();
-                    if(D && (cs = D.defaultView.getComputedStyle(el, ""))){
-                        if(!(camel = propCache[prop])){
-                            camel = propCache[prop] = prop.replace(camelRe, camelFn);
-                        }
-                        return cs[camel];
-                    }
-                    return null;
+                    if(Ext.isDocument(this.dom)) return null;
+                    var el = this.dom,
+                        v,                  
+                        cs;
+                    prop = chkCache(prop);
+                    return (v = el.style[prop]) ? v : 
+                           (cs = view.getComputedStyle(el, "")) ? cs[prop] : null;
                 } :
                 function GS(prop){
-                    var el = this.dom, v, cs, camel;
-                    if(prop == 'opacity'){
-                        if(typeof el.style.filter == 'string'){
-                            var m = el.style.filter.match(/alpha\(opacity=(.*)\)/i);
-                            if(m){
+                   if(Ext.isDocument(this.dom)) return null;
+                   var el = this.dom, 
+                        m, 
+                        cs;     
+                         
+                    if (prop == 'opacity') {
+                        if (el.style.filter.match) {                       
+                            if(m = el.style.filter.match(opacityRe)){
                                 var fv = parseFloat(m[1]);
                                 if(!isNaN(fv)){
                                     return fv ? fv / 100 : 0;
@@ -613,22 +616,12 @@
                             }
                         }
                         return 1;
-                    }else if(prop == 'float'){
-                        prop = "styleFloat";
                     }
-                    if(!(camel = propCache[prop])){
-                        camel = propCache[prop] = prop.replace(camelRe, camelFn);
-                    }
-                    if(v = el.style[camel]){
-                        return v;
-                    }
-                    if(cs = el.currentStyle){
-                        return cs[camel];
-                    }
-                    return null;
+                    prop = chkCache(prop);  
+                    return el.style[prop] || ((cs = el.currentStyle) ? cs[prop] : null);
                 };
                 var GS = null;
-                return gs;
+                return getStyle;
         }(),
         /**
          * Wrapper for setting style properties, also takes single object parameter of multiple styles.
@@ -637,22 +630,20 @@
          * @return {Ext.Element} this
          */
         setStyle : function(prop, value){
-            if(typeof prop == "string"){
-                var camel;
-                if(!(camel = propCache[prop])){
-                    camel = propCache[prop] = prop.replace(camelRe, camelFn);
-                }
-                if(camel == 'opacity') {
-                    this.setOpacity(value);
-                }else{
-                    this.dom.style[camel] = value;
-                }
-            }else{
-                for(var style in prop){
-                    if(typeof prop[style] != "function"){
-                       this.setStyle(style, prop[style]);
-                    }
-                }
+            if(Ext.isDocument(this.dom)) return this;
+            var tmp, 
+                style,
+                camel;
+            if (!Ext.isObject(prop)) {
+                tmp = {};
+                tmp[prop] = value;          
+                prop = tmp;
+            }
+            for (style in prop) {
+                value = prop[style];            
+                style == 'opacity' ? 
+                    this.setOpacity(value) : 
+                    this.dom.style[chkCache(style)] = value;
             }
             return this;
         },
@@ -967,7 +958,38 @@
 	    */
 	    center : function(centerIn){
 	        return this.alignTo(centerIn || Ext.getBody(this.getDocument()), 'c-c');        
-	    }  
+	    } ,
+        
+        /**
+         * Looks at this node and then at parent nodes for a match of the passed simple selector (e.g. div.some-class or span:first-child)
+         * @param {String} selector The simple selector to test
+         * @param {Number/Mixed} maxDepth (optional) The max depth to search as a number or element (defaults to 50 || document.body)
+         * @param {Boolean} returnEl (optional) True to return a Ext.Element object instead of DOM node
+         * @return {HTMLElement} The matching DOM node (or null if no match was found)
+         */
+        findParent : function(simpleSelector, maxDepth, returnEl){
+            var p = this.dom,
+                D = this.getDocument(),
+                b = D.body, 
+                depth = 0,              
+                stopEl;         
+            if(Ext.isGecko && Object.prototype.toString.call(p) == '[object XULElement]') {
+                return null;
+            }
+            maxDepth = maxDepth || 50;
+            if (isNaN(maxDepth)) {
+                stopEl = Ext.getDom(maxDepth, D);
+                maxDepth = Number.MAX_VALUE;
+            }
+            while(p && p.nodeType == 1 && depth < maxDepth && p != b && p != stopEl){
+                if(Ext.DomQuery.is(p, simpleSelector)){
+                    return returnEl ? Ext.get(p, D) : p;
+                }
+                depth++;
+                p = p.parentNode;
+            }
+            return null;
+        }
     });
             
    
