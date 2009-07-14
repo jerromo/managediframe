@@ -5,7 +5,7 @@
  * This file is distributed on an AS IS BASIS WITHOUT ANY WARRANTY; without even
  * the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  * ***********************************************************************************
- * @version 2.0 RC1
+ * @version 2.0 RC3
  * [For Ext 3.0 RC2.1 or higher only]
  *
  * License: ux.ManagedIFrame, ux.ManagedIFrame.Panel, ux.ManagedIFrame.Window  
@@ -25,6 +25,7 @@
         ElFrame, 
         ELD = Ext.lib.Dom,
         EMPTYFN = function(){},
+        OP = Object.prototype,
        addListener = function () {
             var handler;
             if (window.addEventListener) {
@@ -68,7 +69,7 @@
   }
   
   Ext.isDocument = function(obj , testOrigin){
-            var test = Object.prototype.toString.apply(obj) == '[object HTMLDocument]' || (obj && obj.nodeType == 9);
+            var test = OP.toString.apply(obj) == '[object HTMLDocument]' || (obj && obj.nodeType == 9);
             if(test && !!testOrigin){
                 try{
                     test = test && !!obj.location;
@@ -1880,6 +1881,8 @@
             
             ctype     : "Ext.ux.ManagedIFrame.Component",
             
+            //TODO: autoScroll :  true,
+            
             /** @private */
             initComponent : function() {
                 var C = {
@@ -2051,11 +2054,11 @@
             config.items = {
                      xtype    : 'mif',
                     useShim   : true,
-                   autoScroll : config.autoScroll === true,
-                  defaultSrc  : config.defaultSrc,
-                        html  : config.html,
-                    loadMask  : config.loadMask,
-                  frameConfig : config.frameConfig || config.frameCfg,
+                   autoScroll : config.autoScroll || this.autoScroll,
+                  defaultSrc  : config.defaultSrc || this.defaultSrc,
+                        html  : config.html || this.html,
+                    loadMask  : config.loadMask || this.loadMask,
+                  frameConfig : config.frameConfig || config.frameCfg || this.frameConfig,
                   relayTarget : this  //direct relay of events to the parent component
                 };
             delete config.html;                    
@@ -2123,11 +2126,11 @@
 			    config.items = {
 			             xtype    : 'mif',
 			            useShim   : true,
-			           autoScroll : config.autoScroll === true,
-			          defaultSrc  : config.defaultSrc,
-			                html  : config.html,
-			            loadMask  : config.loadMask,
-			          frameConfig : config.frameConfig || config.frameCfg,
+			          autoScroll  : config.autoScroll || this.autoScroll,
+                      defaultSrc  : config.defaultSrc || this.defaultSrc,
+                            html  : config.html || this.html,
+                        loadMask  : config.loadMask || this.loadMask,
+                      frameConfig : config.frameConfig || config.frameCfg || this.frameConfig,
 			          relayTarget : this  //direct relay of events to the parent component
 			        };
 			    delete config.html;                    
@@ -2292,9 +2295,8 @@
 
                 // private
                 cacheStyleSheet : function(ss) {
-                    if (this.rules) {
-                        this.rules = {};
-                    }
+                    this.rules || (this.rules = {});
+                    
                     try {// try catch for cross domain access issue
                         var ssRules = ss.cssRules || ss.rules;
                         for (var j = ssRules.length - 1; j >= 0; --j) {

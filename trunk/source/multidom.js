@@ -54,6 +54,7 @@
      * (not just the one Ext was loaded into).
      */
    var El = Ext.Element, ElFrame, ELD = Ext.lib.Dom, A = Ext.lib.Anim;
+   var emptyFn = function(){}, OP = Object.prototype;
       
    /**
     * @private
@@ -120,7 +121,6 @@
     };
         
      var overload = function(pfn, fn ){
-           fn = typeof fn == 'function' ? fn : function t(){};
            var f = typeof pfn === 'function' ? pfn : function t(){};
            var ov = f._ovl; //call signature hash
            if(!ov){
@@ -142,7 +142,7 @@
            var t = null;
            return f;
        };  
-     
+    
     Ext.applyIf( Ext, {
         overload : overload( overload,
            [
@@ -152,7 +152,7 @@
           ]),
           
         isArray : function(v){
-           return Object.prototype.toString.apply(v) == '[object Array]';
+           return OP.toString.apply(v) == '[object Array]';
         },
         
         isObject:function(obj){
@@ -167,7 +167,7 @@
          */
         isDocument : function(el, testOrigin){
             
-            var test = Object.prototype.toString.apply(el) == '[object HTMLDocument]' || (el && el.nodeType == 9);
+            var test = OP.toString.apply(el) == '[object HTMLDocument]' || (el && el.nodeType == 9);
             if(test && !!testOrigin){
                 try{
                     test = !!el.location;
@@ -177,12 +177,22 @@
             return test;
         },
         
+        isIterable : function(obj){
+            //check for array or arguments
+            if( obj === null || obj === undefined )return false; 
+            if(Ext.isArray(obj) || !!obj.callee || Ext.isNumber(obj.length) ) return true;
+            
+            return !!((/NodeList|HTMLCollection/i).test(OP.toString.call(obj)) || //check for node list type
+              //NodeList has an item and length property
+              //IXMLDOMNodeList has nextNode method, needs to be checked first.
+             obj.nextNode || obj.item || false); 
+        },
         isElement : function(obj){
             return obj && Ext.type(obj)== 'element';
         },
         
         isEvent : function(obj){
-            return Object.prototype.toString.apply(obj) == '[object Event]' || (Ext.isObject(obj) && !Ext.type(o.constructor) && (window.event && o.clientX && o.clientX == window.event.clientX));
+            return OP.toString.apply(obj) == '[object Event]' || (Ext.isObject(obj) && !Ext.type(o.constructor) && (window.event && obj.clientX && obj.clientX == window.event.clientX));
         },
 
         isFunction: function(obj){
@@ -211,13 +221,14 @@
                 //Use a previously cached result if available
                 return cache[key];
               }
-              var el, isSupported = String(evName).toUpperCase() in window.Event;
-             
-              if(!isSupported){
-                var eventName = 'on' + evName;
-                el = testEl || document.createElement(TAGNAMES[eventName] || 'div');
-                isSupported = (eventName in el);
-              }
+              var el, isSupported = false;
+              var eventName = 'on' + evName;
+              var tag = Ext.isString(testEl) ? testEl : TAGNAMES[eventName] || 'div';
+              el = Ext.isString(tag) ? document.createElement(tag): testEl;
+              isSupported = (!!el && (eventName in el));
+              
+              isSupported || (isSupported = !!(String(evName).toUpperCase() in window.Event));
+              
               if (!isSupported && el) {
                 el.setAttribute && el.setAttribute(eventName, 'return;');
                 isSupported = Ext.isFunction(el[eventName]);
@@ -345,6 +356,11 @@
             var D = ELD.getDocument(doc) || {};
             return Ext.get(D.body || D.documentElement);
         }
+       ]),
+       
+     getDoc :Ext.overload([ 
+       Ext.getDoc, 
+       function(doc){ return Ext.get(doc,doc); }
        ])
    });      
 
@@ -976,7 +992,7 @@
                 b = D.body, 
                 depth = 0,              
                 stopEl;         
-            if(Ext.isGecko && Object.prototype.toString.call(p) == '[object XULElement]') {
+            if(Ext.isGecko && OP.toString.call(p) == '[object XULElement]') {
                 return null;
             }
             maxDepth = maxDepth || 50;
@@ -1028,7 +1044,7 @@
         },
         
         getViewWidth : Ext.overload ([
-           ELD.getViewWidth,
+           ELD.getViewWidth || function(full){},
             function() { return this.getViewWidth(false);},
             function(full, doc) {
                 return full ? this.getDocumentWidth(doc) : this.getViewportWidth(doc);
@@ -1036,14 +1052,14 @@
          ),
 
         getViewHeight : Ext.overload ([
-            ELD.getViewHeight,
+            ELD.getViewHeight || function(full){},
             function() { return this.getViewHeight(false);},
 	        function(full, doc) {
 	            return full ? this.getDocumentHeight(doc) : this.getViewportHeight(doc);
 	        }]),
         
         getDocumentHeight: Ext.overload([
-           ELD.getDocumentHeight, 
+           ELD.getDocumentHeight || emptyFn, 
            function(doc) {
             if(doc=this.getDocument(doc)){
               return Math.max(
@@ -1056,7 +1072,7 @@
          ]),
 
         getDocumentWidth: Ext.overload([
-           ELD.getDocumentWidth,
+           ELD.getDocumentWidth || emptyFn,
            function(doc) {
               if(doc=this.getDocument(doc)){
                 return Math.max(
@@ -1069,7 +1085,7 @@
         ]),
 
         getViewportHeight: Ext.overload([
-           ELD.getViewportHeight,
+           ELD.getViewportHeight || emptyFn,
            function(doc){
              if(doc=this.getDocument(doc)){
                 if(Ext.isIE){
@@ -1083,7 +1099,7 @@
         ]),
 
         getViewportWidth: Ext.overload([
-           ELD.getViewportWidth,
+           ELD.getViewportWidth || emptyFn,
            function(doc) {
               if(doc=this.getDocument(doc)){
                 return !this.docIsStrict(doc) && !Ext.isOpera ? doc.body.clientWidth :
@@ -1094,7 +1110,7 @@
         ]),
                
         getXY : Ext.overload([ 
-	        ELD.getXY,
+	        ELD.getXY || function(el){},
 	        function(el, doc) {
                 
                 el = Ext.getDom(el, doc);    
