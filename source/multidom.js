@@ -200,43 +200,51 @@
         },
         
         isEventSupported : (function(){
-            var TAGNAMES = {
-              'select':'input','change':'input',
-              'submit':'form','reset':'form',
-              'error':'img','load':'img','abort':'img'
-            };
-            //Cached results
-            var cache = {};
-            //Get a tokenized string unique to the node and event type
-            var getKey = function(type, el){
-                return (el ? 
-                           (Ext.isElement(el) || Ext.isDocument(el, true) ? 
-                                el.nodeName.toLowerCase() : el.id || Ext.type(el)) 
-                       : 'div') + ':' + type;
-            };
+            
+              var TAGNAMES = {
+                  'select':'input','change':'input',
+                  'submit':'form','reset':'form',
+                  'error':'img','load':'img','abort':'img'
+                },
+                //Cached results
+                cache = {},
+                //Get a tokenized string of the form nodeName:type
+                getKey = function(type, el){
+                    
+                    var tEl = Ext.getDom(el);
+                    
+                    return (tEl ?
+                               (Ext.isElement(tEl) || Ext.isDocument(tEl) ?
+                                    tEl.nodeName.toLowerCase() :
+                                        el.self ? '#window' : el || '#object')
+                           : el || 'div') + ':' + type;
+                };
     
-            return function (evName, testEl) {
-              var key = getKey(evName, testEl);
-              if(key in cache){
-                //Use a previously cached result if available
-                return cache[key];
-              }
-              var el, isSupported = false;
-              var eventName = 'on' + evName;
-              var tag = Ext.isString(testEl) ? testEl : TAGNAMES[eventName] || 'div';
-              el = Ext.isString(tag) ? document.createElement(tag): testEl;
-              isSupported = (!!el && (eventName in el));
-              
-              isSupported || (isSupported = window.Event && !!(String(evName).toUpperCase() in window.Event));
-              
-              if (!isSupported && el) {
-                el.setAttribute && el.setAttribute(eventName, 'return;');
-                isSupported = Ext.isFunction(el[eventName]);
-              }
-              //save the cached result for future tests
-              cache[getKey(evName, el)] = isSupported;
-              el = null;
-              return isSupported;
+                return function (evName, testEl) {
+                  var el, isSupported = false;
+                  var eventName = 'on' + evName;
+                  var tag = (testEl ? testEl : TAGNAMES[evName]) || 'div';
+                  var key = getKey(evName, tag);
+                  
+                  if(key in cache){
+                    //Use a previously cached result if available
+                    return cache[key];
+                  }
+                  
+                  el = Ext.isString(tag) ? document.createElement(tag): testEl;
+                  isSupported = (!!el && (eventName in el));
+                  
+                  isSupported || (isSupported = window.Event && !!(String(evName).toUpperCase() in window.Event));
+                  
+                  if (!isSupported && el) {
+                    el.setAttribute && el.setAttribute(eventName, 'return;');
+                    isSupported = Ext.isFunction(el[eventName]);
+                  }
+                  //save the cached result for future tests
+                  cache[key] = isSupported;
+                  el = null;
+                  return isSupported;
+               
             };
         })()
     });
