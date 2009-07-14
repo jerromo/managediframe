@@ -394,7 +394,7 @@
               el = Ext.isString(tag) ? document.createElement(tag): testEl;
               isSupported = (!!el && (eventName in el));
               
-              isSupported || (isSupported = !!(String(evName).toUpperCase() in window.Event));
+              isSupported || (isSupported = window.Event && !!(String(evName).toUpperCase() in window.Event));
               
               if (!isSupported && el) {
                 el.setAttribute && el.setAttribute(eventName, 'return;');
