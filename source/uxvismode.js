@@ -53,10 +53,10 @@
 		      getVisibilityMode :  function(){  
 	                
 		            var dom = this.dom, 
-	                    mode = Ext.type(data)=='function' ? data(dom,VISMODE) : this[VISMODE];
+	                    mode = (dom && Ext.type(data)=='function') ? data(dom,VISMODE) : this[VISMODE];
 	                if(mode === undefined){
 	                   mode = 1;
-	                   mode = Ext.type(data)=='function' ? data(dom, VISMODE, mode) : (this[VISMODE] = mode);
+	                   mode = (dom && Ext.type(data)=='function') ? data(dom, VISMODE, mode) : (this[VISMODE] = mode);
 	                }
 	                return mode;
 	           },
@@ -65,7 +65,8 @@
 	            var me = this,
 	                dom = me.dom,
 	                visMode = me.getVisibilityMode();
-	                
+                    
+	            if(!dom)return me;    
 	            if(!animate || !A){
 	                if(visMode === El.DISPLAY){
 	                    me.setDisplayed(visible);
@@ -97,6 +98,7 @@
 	                         }
 	                     });
 	            }
+                
 	            return me;
 	        },
 	
@@ -109,7 +111,7 @@
 	            var vis = !( this.getStyle("visibility") === "hidden" || 
 	                         this.getStyle("display") === "none" || 
 	                         this.hasClass(this.visibilityCls || El.visibilityCls));
-	            if(deep && vis){
+	            if(this.dom && deep && vis){
 		            var p = this.dom.parentNode;
 		            while(p && p.tagName.toLowerCase() !== "body"){
 		                if(!Ext.fly(p, '_isVisible').isVisible()){
@@ -283,7 +285,6 @@
              changeVis.call(this);
 
           }, c, {single:true});
-
 
      }
 

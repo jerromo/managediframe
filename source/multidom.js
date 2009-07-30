@@ -440,10 +440,10 @@
         getVisibilityMode :  function(){  
                 
                 var dom = this.dom, 
-                    mode = Ext.isFunction(data) ? data(dom,VISMODE) : this[VISMODE];
+                    mode = (dom && Ext.isFunction(data)) ? data(dom,VISMODE) : this[VISMODE];
                 if(mode === undefined){
                    mode = 1;
-                   Ext.isFunction(data) ? data(dom, VISMODE, mode) : (this[VISMODE] = mode);
+                   (dom && Ext.isFunction(data)) ? data(dom, VISMODE, mode) : (this[VISMODE] = mode);
                 }
                 return mode;
            },
@@ -453,6 +453,7 @@
                 dom = me.dom,
                 visMode = me.getVisibilityMode();
                 
+            if(!dom)return me;   
             if(!animate || !A){
                 if(visMode === El.DISPLAY){
                     me.setDisplayed(visible);
@@ -496,7 +497,7 @@
             var vis = !( this.getStyle("visibility") === "hidden" || 
                          this.getStyle("display") === "none" || 
                          this.hasClass(this.visibilityCls || El.visibilityCls));
-            if(deep && vis){
+            if(this.dom && deep && vis){
                 var p = this.dom.parentNode;
                 while(p && p.tagName.toLowerCase() !== "body"){
                     if(!Ext.fly(p, '_isVisible').isVisible()){
@@ -540,7 +541,7 @@
 	            return this;
 	        }
 	        var d = this.dom, n = d.firstChild, nx;
-	         while(d && n){
+	        while(d && n){
 	             nx = n.nextSibling;
 	             deep && Ext.fly(n, '_cleanser').cleanse(forceReclean, deep);
 	             Ext.removeNode(n);
@@ -582,6 +583,14 @@
 	            }
 	            return this;
         },
+        
+        contains : function(el){
+	        try {
+	            return !el ? false : ELD.isAncestor(this.dom, el.dom ? el.dom : el);
+	        } catch(e) {
+	            return false;
+	        }
+	    },
         
         /**
          * Returns the current scroll position of the element.
