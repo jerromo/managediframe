@@ -108,9 +108,19 @@
      */
      
     Ext.ux.ManagedIFrame.Element = Ext.extend(Ext.Element, {
-             cls   :  'ux-mif',
-             visibilityMode :  Ext.isIE ? El.DISPLAY : 3, //nosize class mode
-             constructor : function(element, forceNew, doc ){
+             
+            cls   :  'ux-mif',
+             
+            visibilityMode :  Ext.isIE ? El.DISPLAY : 3, //nosize class mode
+             
+           /**
+		    * Visibility class - Designed to set an Elements width and height to zero (or other CSS rule)
+		    * @property Ext.ux.ManagedIFrame.Element.visibilityCls
+		    * @type String
+		    */
+	        visibilityCls : 'x-hide-nosize',   
+             
+            constructor : function(element, forceNew, doc ){
                 var d = doc || document;
                 var elCache  = ELD.resolveCache ? ELD.resolveCache(d)._elCache : El.cache ;
                 var dom = typeof element == "string" ?
@@ -239,7 +249,7 @@
                  
                  // Hook the Iframes loaded and error state handlers
                  this.dom[Ext.isIE?'onreadystatechange':'onload'] =
-                 this.dom['onerror'] = this.loadHandler.createDelegate(this);
+                    this.dom['onerror'] = this.loadHandler.createDelegate(this);
                 
             },
 
@@ -1038,27 +1048,25 @@
              * applicable.
              */
             loadHandler : function(e, target) {
-                if (!this.eventsFollowFrameLinks && !this._frameAction ) {
-                    return;
-                }
-                target || (target = {});
                 var rstatus = (e && typeof e.type !== 'undefined' ? e.type: this.dom.readyState);
-
-                switch (rstatus) {
-                    case 'domready' : // MIF
-                    case 'domfail' : // MIF
-                        this._onDocReady (rstatus);
-                        break;
-                    case 'load' : // Gecko, Opera, IE
-                    case 'complete' :
-                        this._onDocLoaded(rstatus);
-                        break;
-                    case 'error':
-                        this._observable.fireEvent.apply(this._observable,['exception', this].concat(arguments));
-                        break;
-                    default :
+                if (this.eventsFollowFrameLinks || this._frameAction ) {
+                    
+	                switch (rstatus) {
+	                    case 'domready' : // MIF
+	                    case 'domfail' : // MIF
+	                        this._onDocReady (rstatus);
+	                        break;
+	                    case 'load' : // Gecko, Opera, IE
+	                    case 'complete' :
+	                        this._onDocLoaded(rstatus);
+	                        break;
+	                    case 'error':
+	                        this._observable.fireEvent.apply(this._observable,['exception', this].concat(arguments));
+	                        break;
+	                    default :
+	                }
                 }
-                rstatus == 'error' || (this.frameState = rstatus);
+                this.frameState = rstatus;
             },
 
             /**
@@ -1070,11 +1078,9 @@
                 //raise internal event regardless of state.
                 obv.fireEvent.call( obv,"_docready", eventName , this._domReady , this._domFired);
                 
-                this._domReady = true;
                 (D = this.getDoc()) && (D.isReady = true);
-                if (!this._domFired &&
-                     !this._isReset &&
-                     (this._hooked = this._renderHook())) {
+                if ( !this._domFired && !this._isReset &&
+                     (this._domReady = this._hooked = this._renderHook())) {
                         // Only raise if sandBox injection succeeded (same origin)
                         this._domFired = true;
                         obv.fireEvent.call(obv, eventName, this);
@@ -1088,16 +1094,16 @@
              */
             _onDocLoaded  : function(eventName ){
                 var obv = this._observable, w;
-                // not going to wait for the event chain, as it's not
-                // cancellable anyhow.
+                
                 obv.fireEvent.defer(1, obv,["_docload", this]);
-                if(!this._isReset && (this._frameAction || this.eventsFollowFrameLinks)){
-                    !this._domFired && this._frameAction && this._onDocReady('domready');
+                if(!this._isReset){
+                    this._domFired || this._onDocReady('domready');
                     Ext.isIE && (w = this.getWindow()) && w.focus();
-                    obv.fireEvent.defer(1, obv, ["documentloaded", this]);
-                    this._frameAction = false;
+                    obv.fireEvent("documentloaded", this);
                 }
+                this._domFired = this._frameAction =  false;
                 this.hideMask(true);
+
             },
 
             /**
@@ -1422,14 +1428,7 @@
      * @ignore
      */
     Ext.override ( ElFrame , {
-  
-   /**
-    * Visibility class - Designed to set an Elements width and height to zero (or other CSS rule)
-    * @property Ext.ux.ManagedIFrame.Element.visibilityCls
-    * @type String
-    */
-        visibilityCls : 'x-hide-nosize',    
-        
+          
     /**
      * Appends an event handler (shorthand for {@link #addListener}).
      * @param {String} eventName The type of event to handle
@@ -2221,9 +2220,8 @@
                     var head = doc.getElementsByTagName("head")[0];
                     var rules = doc.createElement("style");
                     rules.setAttribute("type", "text/css");
-                    if (id) {
-                        rules.setAttribute("id", id);
-                    }
+                    id && rules.setAttribute("id", id);
+
                     if (Ext.isIE) {
                         head.appendChild(rules);
                         ss = rules.styleSheet;
@@ -2237,8 +2235,7 @@
                         head.appendChild(rules);
                         ss = rules.styleSheet
                                 ? rules.styleSheet
-                                : (rules.sheet || doc.styleSheets[doc.styleSheets.length
-                                        - 1]);
+                                : (rules.sheet || doc.styleSheets[doc.styleSheets.length - 1]);
                     }
                     this.cacheStyleSheet(ss);
                     return ss;
@@ -2252,8 +2249,7 @@
                  */
                 removeStyleSheet : function(id) {
 
-                    if (!doc)
-                        return;
+                    if (!doc || !id)return;
                     var existing = doc.getElementById(id);
                     if (existing) {
                         existing.parentNode.removeChild(existing);
@@ -2270,14 +2266,12 @@
                  *            url The href of the new stylesheet to include
                  */
                 swapStyleSheet : function(id, url) {
+                    if (!doc)return;
                     this.removeStyleSheet(id);
-
-                    if (!doc)
-                        return;
                     var ss = doc.createElement("link");
                     ss.setAttribute("rel", "stylesheet");
                     ss.setAttribute("type", "text/css");
-                    ss.setAttribute("id", id);
+                    Ext.isString(id) && ss.setAttribute("id", id);
                     ss.setAttribute("href", url);
                     doc.getElementsByTagName("head")[0].appendChild(ss);
                 },
@@ -2300,10 +2294,10 @@
                     try {// try catch for cross domain access issue
                         var ssRules = ss.cssRules || ss.rules;
                         for (var j = ssRules.length - 1; j >= 0; --j) {
-                            this.rules[ssRules[j].selectorText] = ssRules[j];
+                          ssRules[j].selectorText &&
+                            (this.rules[ssRules[j].selectorText.toLowerCase()] = ssRules[j]);
                         }
-                    } catch (e) {
-                    }
+                    } catch (e) {}
                 },
 
                 /**
@@ -2315,15 +2309,14 @@
                  *         selector
                  */
                 getRules : function(refreshCache) {
-                    if (this.rules == null || refreshCache) {
+                    if (!this.rules || refreshCache) {
                         this.rules = {};
                         if (doc) {
                             var ds = doc.styleSheets;
                             for (var i = 0, len = ds.length; i < len; i++) {
                                 try {
                                     this.cacheStyleSheet(ds[i]);
-                                } catch (e) {
-                                }
+                                } catch (e) {}
                             }
                         }
                     }
@@ -2346,11 +2339,11 @@
                 getRule : function(selector, refreshCache) {
                     var rs = this.getRules(refreshCache);
                     if (!Ext.isArray(selector)) {
-                        return rs[selector];
+                        return rs[selector.toLowerCase()];
                     }
                     for (var i = 0; i < selector.length; i++) {
                         if (rs[selector[i]]) {
-                            return rs[selector[i]];
+                            return rs[selector[i].toLowerCase()];
                         }
                     }
                     return null;
