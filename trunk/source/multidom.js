@@ -628,7 +628,7 @@
             var getStyle = 
              view && view.getComputedStyle ?
                 function GS(prop){
-                    if(Ext.isDocument(this.dom)) return null;
+                    if(!this.dom || Ext.isDocument(this.dom)) return null;
                     var el = this.dom,
                         v,                  
                         cs;
@@ -637,7 +637,7 @@
                            (cs = view.getComputedStyle(el, "")) ? cs[prop] : null;
                 } :
                 function GS(prop){
-                   if(Ext.isDocument(this.dom)) return null;
+                   if(!this.dom ||Ext.isDocument(this.dom)) return null;
                    var el = this.dom, 
                         m, 
                         cs;     
