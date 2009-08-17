@@ -333,6 +333,16 @@
             domReadyRetries   :  7500,
             
             /**
+             *  True to set focus on the frame Window as soon as its document
+             * reports loaded.  (Many external sites use IE's document.createRange to create 
+             * DOM elements, but to be successful, IE requires that the FRAME have focus before
+             * such methods are called)
+             * @cfg focusOnLoad
+             * @default false
+             */
+            focusOnLoad   : false,
+            
+            /**
               * Enables/disables internal cross-frame messaging interface
               * @cfg {Boolean} disableMessaging False to enable cross-frame messaging API
               * Default = true
@@ -1098,7 +1108,7 @@
                 obv.fireEvent.defer(1, obv,["_docload", this]);
                 if(!this._isReset){
                     this._domFired || this._onDocReady('domready');
-                    Ext.isIE && (w = this.getWindow()) && w.focus();
+                    this.focusOnLoad && (w = this.getWindow()) && w.focus();
                     obv.fireEvent("documentloaded", this);
                 }
                 this._domFired = this._frameAction =  false;
@@ -1494,6 +1504,15 @@
          *
          */
         frameConfig  : null,
+        
+        /**
+         * @cfg focusOnLoad True to set focus on the frame Window as soon as its document
+         * reports loaded.  (Many external sites use IE's document.createRange to create 
+         * DOM elements, but to be successfull IE requires that the FRAME have focus before
+         * the method is called)
+         * @default false
+         */
+        focusOnLoad   : false,
         
         /**
          * @property {Object} frameEl An {@link Ext.ux.ManagedIFrame.Element} reference to rendered frame Element.
@@ -2057,6 +2076,7 @@
                   defaultSrc  : config.defaultSrc || this.defaultSrc,
                         html  : config.html || this.html,
                     loadMask  : config.loadMask || this.loadMask,
+                 focusOnLoad  : config.focusOnLoad || this.focusOnLoad,
                   frameConfig : config.frameConfig || config.frameCfg || this.frameConfig,
                   relayTarget : this  //direct relay of events to the parent component
                 };
@@ -2129,6 +2149,7 @@
                       defaultSrc  : config.defaultSrc || this.defaultSrc,
                             html  : config.html || this.html,
                         loadMask  : config.loadMask || this.loadMask,
+                     focusOnLoad  : config.focusOnLoad || this.focusOnLoad,
                       frameConfig : config.frameConfig || config.frameCfg || this.frameConfig,
 			          relayTarget : this  //direct relay of events to the parent component
 			        };
