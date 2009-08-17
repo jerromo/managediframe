@@ -45,10 +45,10 @@
 		      getVisibilityMode :  function(){  
 	                
 		            var dom = this.dom, 
-	                    mode = Ext.type(data)=='function' ? data(dom,VISMODE) : this[VISMODE];
+	                    mode = (dom && Ext.type(data)=='function') ? data(dom,VISMODE) : this[VISMODE];
 	                if(mode === undefined){
 	                   mode = 1;
-	                   mode = Ext.type(data)=='function' ? data(dom, VISMODE, mode) : (this[VISMODE] = mode);
+	                   mode = (dom && Ext.type(data)=='function') ? data(dom, VISMODE, mode) : (this[VISMODE] = mode);
 	                }
 	                return mode;
 	           },
@@ -57,7 +57,8 @@
 	            var me = this,
 	                dom = me.dom,
 	                visMode = me.getVisibilityMode();
-	                
+                    
+	            if(!dom)return me;    
 	            if(!animate || !A){
 	                if(visMode === El.DISPLAY){
 	                    me.setDisplayed(visible);
@@ -89,6 +90,7 @@
 	                         }
 	                     });
 	            }
+                
 	            return me;
 	        },
 	
@@ -97,7 +99,7 @@
 	            var vis = !( this.getStyle("visibility") === "hidden" || 
 	                         this.getStyle("display") === "none" || 
 	                         this.hasClass(this.visibilityCls || El.visibilityCls));
-	            if(deep && vis){
+	            if(this.dom && deep && vis){
 		            var p = this.dom.parentNode;
 		            while(p && p.tagName.toLowerCase() !== "body"){
 		                if(!Ext.fly(p, '_isVisible').isVisible()){
@@ -213,7 +215,6 @@
              changeVis.call(this);
 
           }, c, {single:true});
-
 
      }
 
@@ -367,43 +368,51 @@
         },
         
         isEventSupported : (function(){
-            var TAGNAMES = {
-              'select':'input','change':'input',
-              'submit':'form','reset':'form',
-              'error':'img','load':'img','abort':'img'
-            };
-            //Cached results
-            var cache = {};
-            //Get a tokenized string unique to the node and event type
-            var getKey = function(type, el){
-                return (el ? 
-                           (Ext.isElement(el) || Ext.isDocument(el, true) ? 
-                                el.nodeName.toLowerCase() : el.id || Ext.type(el)) 
-                       : 'div') + ':' + type;
-            };
+            
+              var TAGNAMES = {
+                  'select':'input','change':'input',
+                  'submit':'form','reset':'form',
+                  'error':'img','load':'img','abort':'img'
+                },
+                //Cached results
+                cache = {},
+                //Get a tokenized string of the form nodeName:type
+                getKey = function(type, el){
+                    
+                    var tEl = Ext.getDom(el);
+                    
+                    return (tEl ?
+                               (Ext.isElement(tEl) || Ext.isDocument(tEl) ?
+                                    tEl.nodeName.toLowerCase() :
+                                        el.self ? '#window' : el || '#object')
+                           : el || 'div') + ':' + type;
+                };
     
-            return function (evName, testEl) {
-              var key = getKey(evName, testEl);
-              if(key in cache){
-                //Use a previously cached result if available
-                return cache[key];
-              }
-              var el, isSupported = false;
-              var eventName = 'on' + evName;
-              var tag = Ext.isString(testEl) ? testEl : TAGNAMES[eventName] || 'div';
-              el = Ext.isString(tag) ? document.createElement(tag): testEl;
-              isSupported = (!!el && (eventName in el));
-              
-              isSupported || (isSupported = window.Event && !!(String(evName).toUpperCase() in window.Event));
-              
-              if (!isSupported && el) {
-                el.setAttribute && el.setAttribute(eventName, 'return;');
-                isSupported = Ext.isFunction(el[eventName]);
-              }
-              //save the cached result for future tests
-              cache[getKey(evName, el)] = isSupported;
-              el = null;
-              return isSupported;
+                return function (evName, testEl) {
+                  var el, isSupported = false;
+                  var eventName = 'on' + evName;
+                  var tag = (testEl ? testEl : TAGNAMES[evName]) || 'div';
+                  var key = getKey(evName, tag);
+                  
+                  if(key in cache){
+                    //Use a previously cached result if available
+                    return cache[key];
+                  }
+                  
+                  el = Ext.isString(tag) ? document.createElement(tag): testEl;
+                  isSupported = (!!el && (eventName in el));
+                  
+                  isSupported || (isSupported = window.Event && !!(String(evName).toUpperCase() in window.Event));
+                  
+                  if (!isSupported && el) {
+                    el.setAttribute && el.setAttribute(eventName, 'return;');
+                    isSupported = Ext.isFunction(el[eventName]);
+                  }
+                  //save the cached result for future tests
+                  cache[key] = isSupported;
+                  el = null;
+                  return isSupported;
+               
             };
         })()
     });
@@ -560,10 +569,10 @@
         getVisibilityMode :  function(){  
                 
                 var dom = this.dom, 
-                    mode = Ext.isFunction(data) ? data(dom,VISMODE) : this[VISMODE];
+                    mode = (dom && Ext.isFunction(data)) ? data(dom,VISMODE) : this[VISMODE];
                 if(mode === undefined){
                    mode = 1;
-                   Ext.isFunction(data) ? data(dom, VISMODE, mode) : (this[VISMODE] = mode);
+                   (dom && Ext.isFunction(data)) ? data(dom, VISMODE, mode) : (this[VISMODE] = mode);
                 }
                 return mode;
            },
@@ -573,6 +582,7 @@
                 dom = me.dom,
                 visMode = me.getVisibilityMode();
                 
+            if(!dom)return me;   
             if(!animate || !A){
                 if(visMode === El.DISPLAY){
                     me.setDisplayed(visible);
@@ -612,7 +622,7 @@
             var vis = !( this.getStyle("visibility") === "hidden" || 
                          this.getStyle("display") === "none" || 
                          this.hasClass(this.visibilityCls || El.visibilityCls));
-            if(deep && vis){
+            if(this.dom && deep && vis){
                 var p = this.dom.parentNode;
                 while(p && p.tagName.toLowerCase() !== "body"){
                     if(!Ext.fly(p, '_isVisible').isVisible()){
@@ -645,7 +655,7 @@
 	            return this;
 	        }
 	        var d = this.dom, n = d.firstChild, nx;
-	         while(d && n){
+	        while(d && n){
 	             nx = n.nextSibling;
 	             deep && Ext.fly(n, '_cleanser').cleanse(forceReclean, deep);
 	             Ext.removeNode(n);
@@ -688,6 +698,14 @@
 	            return this;
         },
         
+        contains : function(el){
+	        try {
+	            return !el ? false : ELD.isAncestor(this.dom, el.dom ? el.dom : el);
+	        } catch(e) {
+	            return false;
+	        }
+	    },
+        
         
         getScroll : function(){
             var d = this.dom, 
@@ -717,7 +735,7 @@
             var getStyle = 
              view && view.getComputedStyle ?
                 function GS(prop){
-                    if(Ext.isDocument(this.dom)) return null;
+                    if(!this.dom || Ext.isDocument(this.dom)) return null;
                     var el = this.dom,
                         v,                  
                         cs;
@@ -726,7 +744,7 @@
                            (cs = view.getComputedStyle(el, "")) ? cs[prop] : null;
                 } :
                 function GS(prop){
-                   if(Ext.isDocument(this.dom)) return null;
+                   if(!this.dom ||Ext.isDocument(this.dom)) return null;
                    var el = this.dom, 
                         m, 
                         cs;     
@@ -1318,9 +1336,15 @@
     
      
     Ext.ux.ManagedIFrame.Element = Ext.extend(Ext.Element, {
-             cls   :  'ux-mif',
-             visibilityMode :  Ext.isIE ? El.DISPLAY : 3, //nosize class mode
-             constructor : function(element, forceNew, doc ){
+             
+            cls   :  'ux-mif',
+             
+            visibilityMode :  Ext.isIE ? El.DISPLAY : 3, //nosize class mode
+             
+           
+	        visibilityCls : 'x-hide-nosize',   
+             
+            constructor : function(element, forceNew, doc ){
                 var d = doc || document;
                 var elCache  = ELD.resolveCache ? ELD.resolveCache(d)._elCache : El.cache ;
                 var dom = typeof element == "string" ?
@@ -1375,7 +1399,7 @@
                  
                  // Hook the Iframes loaded and error state handlers
                  this.dom[Ext.isIE?'onreadystatechange':'onload'] =
-                 this.dom['onerror'] = this.loadHandler.createDelegate(this);
+                    this.dom['onerror'] = this.loadHandler.createDelegate(this);
                 
             },
 
@@ -1421,6 +1445,9 @@
 
              
             domReadyRetries   :  7500,
+            
+            
+            focusOnLoad   : false,
             
             
 
@@ -1910,27 +1937,25 @@
 
             
             loadHandler : function(e, target) {
-                if (!this.eventsFollowFrameLinks && !this._frameAction ) {
-                    return;
-                }
-                target || (target = {});
                 var rstatus = (e && typeof e.type !== 'undefined' ? e.type: this.dom.readyState);
-
-                switch (rstatus) {
-                    case 'domready' : // MIF
-                    case 'domfail' : // MIF
-                        this._onDocReady (rstatus);
-                        break;
-                    case 'load' : // Gecko, Opera, IE
-                    case 'complete' :
-                        this._onDocLoaded(rstatus);
-                        break;
-                    case 'error':
-                        this._observable.fireEvent.apply(this._observable,['exception', this].concat(arguments));
-                        break;
-                    default :
+                if (this.eventsFollowFrameLinks || this._frameAction ) {
+                    
+	                switch (rstatus) {
+	                    case 'domready' : // MIF
+	                    case 'domfail' : // MIF
+	                        this._onDocReady (rstatus);
+	                        break;
+	                    case 'load' : // Gecko, Opera, IE
+	                    case 'complete' :
+	                        this._onDocLoaded(rstatus);
+	                        break;
+	                    case 'error':
+	                        this._observable.fireEvent.apply(this._observable,['exception', this].concat(arguments));
+	                        break;
+	                    default :
+	                }
                 }
-                rstatus == 'error' || (this.frameState = rstatus);
+                this.frameState = rstatus;
             },
 
             
@@ -1939,11 +1964,9 @@
                 //raise internal event regardless of state.
                 obv.fireEvent.call( obv,"_docready", eventName , this._domReady , this._domFired);
                 
-                this._domReady = true;
                 (D = this.getDoc()) && (D.isReady = true);
-                if (!this._domFired &&
-                     !this._isReset &&
-                     (this._hooked = this._renderHook())) {
+                if ( !this._domFired && !this._isReset &&
+                     (this._domReady = this._hooked = this._renderHook())) {
                         // Only raise if sandBox injection succeeded (same origin)
                         this._domFired = true;
                         obv.fireEvent.call(obv, eventName, this);
@@ -1954,16 +1977,16 @@
             
             _onDocLoaded  : function(eventName ){
                 var obv = this._observable, w;
-                // not going to wait for the event chain, as it's not
-                // cancellable anyhow.
+                
                 obv.fireEvent.defer(1, obv,["_docload", this]);
-                if(!this._isReset && (this._frameAction || this.eventsFollowFrameLinks)){
-                    !this._domFired && this._frameAction && this._onDocReady('domready');
-                    Ext.isIE && (w = this.getWindow()) && w.focus();
-                    obv.fireEvent.defer(1, obv, ["documentloaded", this]);
-                    this._frameAction = false;
+                if(!this._isReset){
+                    this._domFired || this._onDocReady('domready');
+                    this.focusOnLoad && (w = this.getWindow()) && w.focus();
+                    obv.fireEvent("documentloaded", this);
                 }
+                this._domFired = this._frameAction =  false;
                 this.hideMask(true);
+
             },
 
             
@@ -2199,10 +2222,7 @@
     var fp = ElFrame.prototype;
     
     Ext.override ( ElFrame , {
-  
-   
-        visibilityCls : 'x-hide-nosize',    
-        
+          
     
         on :  fp.addListener,
         
@@ -2234,6 +2254,9 @@
         
         
         frameConfig  : null,
+        
+        
+        focusOnLoad   : false,
         
         
         frameEl : null, 
@@ -2543,6 +2566,7 @@
                   defaultSrc  : config.defaultSrc || this.defaultSrc,
                         html  : config.html || this.html,
                     loadMask  : config.loadMask || this.loadMask,
+                 focusOnLoad  : config.focusOnLoad || this.focusOnLoad,
                   frameConfig : config.frameConfig || config.frameCfg || this.frameConfig,
                   relayTarget : this  //direct relay of events to the parent component
                 };
@@ -2590,6 +2614,7 @@
                       defaultSrc  : config.defaultSrc || this.defaultSrc,
                             html  : config.html || this.html,
                         loadMask  : config.loadMask || this.loadMask,
+                     focusOnLoad  : config.focusOnLoad || this.focusOnLoad,
                       frameConfig : config.frameConfig || config.frameCfg || this.frameConfig,
 			          relayTarget : this  //direct relay of events to the parent component
 			        };
@@ -2656,9 +2681,8 @@
                     var head = doc.getElementsByTagName("head")[0];
                     var rules = doc.createElement("style");
                     rules.setAttribute("type", "text/css");
-                    if (id) {
-                        rules.setAttribute("id", id);
-                    }
+                    id && rules.setAttribute("id", id);
+
                     if (Ext.isIE) {
                         head.appendChild(rules);
                         ss = rules.styleSheet;
@@ -2672,8 +2696,7 @@
                         head.appendChild(rules);
                         ss = rules.styleSheet
                                 ? rules.styleSheet
-                                : (rules.sheet || doc.styleSheets[doc.styleSheets.length
-                                        - 1]);
+                                : (rules.sheet || doc.styleSheets[doc.styleSheets.length - 1]);
                     }
                     this.cacheStyleSheet(ss);
                     return ss;
@@ -2682,8 +2705,7 @@
                 
                 removeStyleSheet : function(id) {
 
-                    if (!doc)
-                        return;
+                    if (!doc || !id)return;
                     var existing = doc.getElementById(id);
                     if (existing) {
                         existing.parentNode.removeChild(existing);
@@ -2692,14 +2714,12 @@
 
                 
                 swapStyleSheet : function(id, url) {
+                    if (!doc)return;
                     this.removeStyleSheet(id);
-
-                    if (!doc)
-                        return;
                     var ss = doc.createElement("link");
                     ss.setAttribute("rel", "stylesheet");
                     ss.setAttribute("type", "text/css");
-                    ss.setAttribute("id", id);
+                    Ext.isString(id) && ss.setAttribute("id", id);
                     ss.setAttribute("href", url);
                     doc.getElementsByTagName("head")[0].appendChild(ss);
                 },
@@ -2716,23 +2736,22 @@
                     try {// try catch for cross domain access issue
                         var ssRules = ss.cssRules || ss.rules;
                         for (var j = ssRules.length - 1; j >= 0; --j) {
-                            this.rules[ssRules[j].selectorText] = ssRules[j];
+                          ssRules[j].selectorText &&
+                            (this.rules[ssRules[j].selectorText.toLowerCase()] = ssRules[j]);
                         }
-                    } catch (e) {
-                    }
+                    } catch (e) {}
                 },
 
                 
                 getRules : function(refreshCache) {
-                    if (this.rules == null || refreshCache) {
+                    if (!this.rules || refreshCache) {
                         this.rules = {};
                         if (doc) {
                             var ds = doc.styleSheets;
                             for (var i = 0, len = ds.length; i < len; i++) {
                                 try {
                                     this.cacheStyleSheet(ds[i]);
-                                } catch (e) {
-                                }
+                                } catch (e) {}
                             }
                         }
                     }
@@ -2743,11 +2762,11 @@
                 getRule : function(selector, refreshCache) {
                     var rs = this.getRules(refreshCache);
                     if (!Ext.isArray(selector)) {
-                        return rs[selector];
+                        return rs[selector.toLowerCase()];
                     }
                     for (var i = 0; i < selector.length; i++) {
                         if (rs[selector[i]]) {
-                            return rs[selector[i]];
+                            return rs[selector[i].toLowerCase()];
                         }
                     }
                     return null;
