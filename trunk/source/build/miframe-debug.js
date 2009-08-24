@@ -537,6 +537,25 @@
         view = document.defaultView,
         VISMODE = 'visibilityMode',
         ELDISPLAY = El.DISPLAY,
+        PADDING = "padding",
+        MARGIN = "margin",
+        BORDER = "border",
+        LEFT = "-left",
+        RIGHT = "-right",
+        TOP = "-top",
+        BOTTOM = "-bottom",
+        WIDTH = "-width",    
+        MATH = Math,
+        HIDDEN = 'hidden',
+        ISCLIPPED = 'isClipped',
+        OVERFLOW = 'overflow',
+        OVERFLOWX = 'overflow-x',
+        OVERFLOWY = 'overflow-y',
+        ORIGINALCLIP = 'originalClip',
+        // special markup used throughout Ext when box wrapping elements    
+        borders = {l: BORDER + LEFT + WIDTH, r: BORDER + RIGHT + WIDTH, t: BORDER + TOP + WIDTH, b: BORDER + BOTTOM + WIDTH},
+        paddings = {l: PADDING + LEFT, r: PADDING + RIGHT, t: PADDING + TOP, b: PADDING + BOTTOM},
+        margins = {l: MARGIN + LEFT, r: MARGIN + RIGHT, t: MARGIN + TOP, b: MARGIN + BOTTOM},
         data = El.data,
         CSS = Ext.util.CSS;  //Not available in Ext Core.
     
@@ -1469,7 +1488,7 @@
             
             submitAsTarget : function(submitCfg){ //form, url, params, callback, scope){
                 var opt = submitCfg || {}, D = this.getDocument();
-		        //this.reset();
+		        
 		        var form = opt.form || Ext.DomHelper.append(D.body, { tag: 'form', cls : 'x-hidden'});
 		        form = Ext.getDom(form.form || form, D);
 		
@@ -1561,28 +1580,31 @@
 
             
             reset : function(src, callback, scope) {
-
+                
                 this._unHook();
                 var loadMaskOff = false;
+                var s = src, win = this.getWindow();
                 if(this.loadMask){
                     loadMaskOff = this.loadMask.disabled;
                     this.loadMask.disabled = false;
-                }
-                this._observable.addListener('_docload',
-                  function(frame) {
-                    if(frame.loadMask){
-                        frame.loadMask.disabled = loadMaskOff;
-                    };
-                    frame._isReset= false;
-                    Ext.isFunction(callback) &&  callback.call(scope || this, frame);
-                }, this, {single:true});
-
+                 }
                 this.hideMask(true);
-                this._isReset= true;
-                var s = src;
-                Ext.isFunction(src) && ( s = src());
-                s = this._targetURI = Ext.isEmpty(s, true)? this.resetUrl: s;
-                this.getWindow().location.href = s;
+                this._isReset= !!win;
+                if(win){
+	                this._observable.addListener('_docload',
+	                  function(frame) {
+	                    if(frame.loadMask){
+	                        frame.loadMask.disabled = loadMaskOff;
+	                    };
+	                    frame._isReset= false;
+	                    Ext.isFunction(callback) &&  callback.call(scope || this, frame);
+	                }, this, {single:true});
+	            
+                    Ext.isFunction(src) && ( s = src());
+                    s = this._targetURI = Ext.isEmpty(s, true)? this.resetUrl: s;
+                    win.location.href = s;
+                }
+                
                 return this;
             },
 
@@ -1843,8 +1865,7 @@
                 var dom = this.dom, win = null;
                 try {
                     win = dom.contentWindow || window.frames[dom.name] || null;
-                } catch (gwEx) {
-                }
+                } catch (gwEx) {}
                 return win;
             },
             
