@@ -227,11 +227,13 @@
  
  
  (function(){   
-    
-    
+        
     
    var El = Ext.Element, ElFrame, ELD = Ext.lib.Dom, A = Ext.lib.Anim;
-   var emptyFn = function(){}, OP = Object.prototype;
+   var emptyFn = function(){}, 
+       OP = Object.prototype,
+       OPString = OP.toString,
+       HTMLDoc = '[object HTMLDocument]';
       
    
    var _documents= {
@@ -241,7 +243,7 @@
     };
                               
     var resolveCache = ELD.resolveCache = function(doc, cacheId){
-        doc = ELD.getDocument(doc);
+        doc = GETDOC(doc);
 
         //Use Ext.Element.cache for top-level document
         var c = (doc == document? '$_top' : cacheId);
@@ -325,7 +327,7 @@
           ]),
           
         isArray : function(v){
-           return OP.toString.apply(v) == '[object Array]';
+           return OPString.apply(v) == '[object Array]';
         },
         
         isObject:function(obj){
@@ -335,8 +337,8 @@
         
         isDocument : function(el, testOrigin){
             
-            var test = OP.toString.apply(el) == '[object HTMLDocument]' || (el && el.nodeType == 9);
-            if(test && !!testOrigin){
+            var test = OPString.call(el) == HTMLDoc || (el && el.nodeType == 9);
+            if(test && testOrigin){
                 try{
                     test = !!el.location;
                 }
@@ -350,7 +352,7 @@
             if( obj === null || obj === undefined )return false; 
             if(Ext.isArray(obj) || !!obj.callee || Ext.isNumber(obj.length) ) return true;
             
-            return !!((/NodeList|HTMLCollection/i).test(OP.toString.call(obj)) || //check for node list type
+            return !!((/NodeList|HTMLCollection/i).test(OPString.call(obj)) || //check for node list type
               //NodeList has an item and length property
               //IXMLDOMNodeList has nextNode method, needs to be checked first.
              obj.nextNode || obj.item || false); 
@@ -360,61 +362,65 @@
         },
         
         isEvent : function(obj){
-            return OP.toString.apply(obj) == '[object Event]' || (Ext.isObject(obj) && !Ext.type(o.constructor) && (window.event && obj.clientX && obj.clientX == window.event.clientX));
+            return OPString.apply(obj) == '[object Event]' || (Ext.isObject(obj) && !Ext.type(o.constructor) && (window.event && obj.clientX && obj.clientX == window.event.clientX));
         },
 
         isFunction: function(obj){
             return !!obj && typeof obj == 'function';
         },
         
-        isEventSupported : (function(){
-            
-              var TAGNAMES = {
-                  'select':'input','change':'input',
-                  'submit':'form','reset':'form',
-                  'error':'img','load':'img','abort':'img'
-                },
-                //Cached results
-                cache = {},
-                //Get a tokenized string of the form nodeName:type
-                getKey = function(type, el){
-                    
-                    var tEl = Ext.getDom(el);
-                    
-                    return (tEl ?
-                               (Ext.isElement(tEl) || Ext.isDocument(tEl) ?
-                                    tEl.nodeName.toLowerCase() :
-                                        el.self ? '#window' : el || '#object')
-                           : el || 'div') + ':' + type;
-                };
-    
-                return function (evName, testEl) {
-                  var el, isSupported = false;
-                  var eventName = 'on' + evName;
-                  var tag = (testEl ? testEl : TAGNAMES[evName]) || 'div';
-                  var key = getKey(evName, tag);
-                  
-                  if(key in cache){
-                    //Use a previously cached result if available
-                    return cache[key];
-                  }
-                  
-                  el = Ext.isString(tag) ? document.createElement(tag): testEl;
-                  isSupported = (!!el && (eventName in el));
-                  
-                  isSupported || (isSupported = window.Event && !!(String(evName).toUpperCase() in window.Event));
-                  
-                  if (!isSupported && el) {
-                    el.setAttribute && el.setAttribute(eventName, 'return;');
-                    isSupported = Ext.isFunction(el[eventName]);
-                  }
-                  //save the cached result for future tests
-                  cache[key] = isSupported;
-                  el = null;
-                  return isSupported;
-               
+          
+        isEventSupported : function(evName, testEl){
+            var TAGNAMES = {
+              'select':'input',
+              'change':'input',
+              'submit':'form',
+              'reset':'form',
+              'load':'img',
+              'error':'img',
+              'abort':'img'
+            }
+            //Cached results
+            var cache = {};
+            //Get a tokenized string of the form nodeName:type
+            var getKey = function(type, el){
+                
+                var tEl = Ext.getDom(el);
+                
+                return (tEl ?
+                           (Ext.isElement(tEl) || Ext.isDocument(tEl) ?
+                                tEl.nodeName.toLowerCase() :
+                                    el.self ? '#window' : el || '#object')
+                       : el || 'div') + ':' + type;
             };
-        })()
+
+            return function (evName, testEl) {
+              var el, isSupported = false;
+              var eventName = 'on' + evName;
+              var tag = (testEl ? testEl : TAGNAMES[evName]) || 'div';
+              var key = getKey(evName, tag);
+              
+              if(key in cache){
+                //Use a previously cached result if available
+                return cache[key];
+              }
+              
+              el = Ext.isString(tag) ? document.createElement(tag): testEl;
+              isSupported = (!!el && (eventName in el));
+              
+              isSupported || (isSupported = window.Event && !!(String(evName).toUpperCase() in window.Event));
+              
+              if (!isSupported && el) {
+                el.setAttribute && el.setAttribute(eventName, 'return;');
+                isSupported = Ext.isFunction(el[eventName]);
+              }
+              //save the cached result for future tests
+              cache[key] = isSupported;
+              el = null;
+              return isSupported;
+            };
+
+        }()
     });
        
    
@@ -430,7 +436,7 @@
         if (!libFlyweight) {
             libFlyweight = new Ext.Element.Flyweight();
         }
-        libFlyweight.dom = doc ? Ext.getDom(el, doc) : Ext.getDom(el);
+        libFlyweight.dom = Ext.getDom(el, doc);
         return libFlyweight;
     }
    
@@ -438,24 +444,18 @@
     Ext.apply(Ext, {
     
 
-      get : Ext.overload([
-        Ext.get,
-        function(el, doc, elcache){  //named-cache optimized
-            try{doc = doc?doc.dom||doc:null;}catch(docErr){doc = null;}
-            //resolve from named cache first
-            return el && doc ? resolveCache(doc,elcache)._elCache[el.id] || this.get(el, doc) : null ;
-        },
-        function(el, doc){         //document targeted
-            if(!el || !doc ){ return null; }
-            
+      get : El.get = function(el, doc){         //document targeted
+            if(!el ){ return null; }
+            doc || (doc = document);
             if(!Ext.isDocument(doc)) {
                 return this.get(el); //a bad get signature
              }
             var ex, elm, id, cache = resolveCache(doc);
             if(Ext.isDocument(el)){
+                
                 if(!Ext.isDocument(el, true)){ return false; }  //is it accessible
+
                 // create a bogus element object representing the document object
-                if(el == self.document){ return this.get(el); }
                 if(cache._elCache['$_doc']){
                     return cache._elCache['$_doc'];
                 }
@@ -463,13 +463,16 @@
                 f.prototype = El.prototype;
                 var docEl = new f();
                 docEl.dom = el;
+                docEl._isDoc = true;
                 return cache._elCache['$_doc'] = docEl;
              }
              
              cache = cache._elCache;
              
              if(typeof el == "string"){ // element id
+                
                 elm = Ext.getDom(el,doc);
+                
                 if(!elm) return null;
                 
                 if(ex = cache[el]){
@@ -477,16 +480,18 @@
                 }else{
                     ex = cache[el] = new (assertClass(elm))(elm, null, doc);
                 }
+                
                 return ex;
              }else if(el.tagName){ // dom element
-                if(!(id = el.id)){
-                    id = Ext.id(el);
-                }
-                if(ex = cache[id]){
+                
+                doc = GETDOC(el);
+                cache = resolveCache(doc);
+                if(ex = cache[el.id || (el.id = Ext.id(el))]){
                     ex.dom = el;
                 }else{
-                    ex = cache[id] = new (assertClass(el))(el, null, doc);
+                    ex = cache[el.id] = new (assertClass(el))(el, null, doc);
                 }
+                
                 return ex;
             }else if(el instanceof El || el instanceof El['IFRAME']){
                 
@@ -503,7 +508,7 @@
             }
            return null;
 
-    }]),
+    },
      
      
      getDom : function(el, doc){
@@ -511,23 +516,17 @@
             return el.dom ? el.dom : (typeof el === 'string' ? (doc ||document).getElementById(el) : el);
         },
      
-     getBody : Ext.overload([
-        
-        Ext.getBody,
-        
-        function(doc){
-            var D = ELD.getDocument(doc) || {};
-            return Ext.get(D.body || D.documentElement);
-        }
-       ]),
+     getBody : function(doc){
+            var D = ELD.getDocument(doc) || document;
+            return Ext.get(D.body || D.documentElement, D);
+       },
        
      getDoc :Ext.overload([ 
        Ext.getDoc, 
        function(doc){ return Ext.get(doc,doc); }
        ])
    });      
-
-
+   
     var propCache = {},
         camelRe = /(-[a-z])/gi,
         camelFn = function(m, a){ return a.charAt(1).toUpperCase(); },
@@ -557,6 +556,9 @@
         paddings = {l: PADDING + LEFT, r: PADDING + RIGHT, t: PADDING + TOP, b: PADDING + BOTTOM},
         margins = {l: MARGIN + LEFT, r: MARGIN + RIGHT, t: MARGIN + TOP, b: MARGIN + BOTTOM},
         data = El.data,
+        GETDOM = Ext.getDom,
+        GET = Ext.get,
+        DH = Ext.DomHelper,
         CSS = Ext.util.CSS;  //Not available in Ext Core.
     
     function chkCache(prop) {
@@ -564,97 +566,13 @@
     };
     
     
-    El.NOSIZE  = 3; //Compat for previous Ext releases  
-    El.ASCLASS = 3;
-    
-    if(CSS){
-      Ext.onReady(function(){
-	        CSS.getRule('.x-hide-nosize') || //already defined?
-	            CSS.createStyleSheet('.x-hide-nosize{height:0px!important;width:0px!important;border:none!important;zoom:1;}.x-hide-nosize * {height:0px!important;width:0px!important;border:none!important;zoom:1;}');
-	        CSS.refreshCache();
-      });
-    }
-      
-   
-    El.visibilityCls = 'x-hide-nosize';
-
     El.addMethods({
         
         getDocument : function(){
-           return ELD.getDocument(this);  
+           return GETDOC(this);  
         },
-        
        
-        getVisibilityMode :  function(){  
-                
-                var dom = this.dom, 
-                    mode = (dom && Ext.isFunction(data)) ? data(dom,VISMODE) : this[VISMODE];
-                if(mode === undefined){
-                   mode = 1;
-                   (dom && Ext.isFunction(data)) ? data(dom, VISMODE, mode) : (this[VISMODE] = mode);
-                }
-                return mode;
-           },
-                  
-        setVisible : function(visible, animate){
-            var me = this,
-                dom = me.dom,
-                visMode = me.getVisibilityMode();
-                
-            if(!dom)return me;   
-            if(!animate || !A){
-                if(visMode === El.DISPLAY){
-                    me.setDisplayed(visible);
-                }else if(visMode === El.VISIBILITY){
-                    me.fixDisplay();
-                    dom.style.visibility = visible ? "visible" : "hidden";
-                }else if(visMode === El.ASCLASS){
-                    me[visible?'removeClass':'addClass'](me.visibilityCls || El.visibilityCls);
-                }
-
-            }else{
-               
-                if(visible){
-                    me.setOpacity(.01);
-                    me.setVisible(true);
-                }
-                me.anim({opacity: { to: (visible?1:0) }},
-                      me.preanim(arguments, 1),
-                      null, .35, 'easeIn', function(){
-                         if(!visible){
-                             if(visMode === El.DISPLAY){
-                                 dom.style.display = "none";
-                             }else if(visMode === El.VISIBILITY){
-                                 dom.style.visibility = "hidden";
-                             }else if(visMode === El.ASCLASS){
-                                 me.addClass(me.visibilityCls || El.visibilityCls);
-                             }
-                             me.setOpacity(1);
-                         }
-                     });
-            }
-            return me;
-        },
-
-        
-        isVisible : function(deep) {
-            var vis = !( this.getStyle("visibility") === "hidden" || 
-                         this.getStyle("display") === "none" || 
-                         this.hasClass(this.visibilityCls || El.visibilityCls));
-            if(this.dom && deep && vis){
-                var p = this.dom.parentNode;
-                while(p && p.tagName.toLowerCase() !== "body"){
-                    if(!Ext.fly(p, '_isVisible').isVisible()){
-                        vis = false;
-                        break;
-                    }
-                    p = p.parentNode;
-                }
-                delete El._flyweights['_isVisible']; //orphan reference cleanup
-            }
-            return vis;
-        },
-        
+           
         
 	
 	    remove : function(cleanse, deep){
@@ -684,8 +602,75 @@
 	         this.isCleansed = true;
 	         return this;
 	     },
+         
+         
+        appendChild: function(el, doc){        
+            return GET(el, doc || this.getDocument()).appendTo(this);        
+        },
+    
+        
+        appendTo: function(el, doc){        
+            GETDOM(el, doc || this.getDocument()).appendChild(this.dom);        
+            return this;
+        },
+    
+        
+        insertBefore: function(el, doc){               
+            (el = GETDOM(el, doc || this.getDocument())).parentNode.insertBefore(this.dom, el);
+            return this;
+        },
+    
+        
+        insertAfter: function(el, doc){
+            (el = GETDOM(el, doc || this.getDocument())).parentNode.insertBefore(this.dom, el.nextSibling);
+            return this;
+        },
+    
+        
+        insertFirst: function(el, returnDom){
+            el = el || {};
+            if(el.nodeType || el.dom || typeof el == 'string'){ // element
+                el = GETDOM(el);
+                this.dom.insertBefore(el, this.dom.firstChild);
+                return !returnDom ? GET(el) : el;
+            }else{ // dh config
+                return this.createChild(el, this.dom.firstChild, returnDom);
+            }
+        },
+    
+        
+        replace: function(el, doc){
+            el = GET(el, doc || this.getDocument());
+            this.insertBefore(el);
+            el.remove();
+            return this;
+        },
+    
+        
+        replaceWith: function(el, doc){
+            var me = this,
+                Element = Ext.Element;
+            if(el.nodeType || el.dom || typeof el == 'string'){
+                el = GETDOM(el, doc || me.getDocument());
+                me.dom.parentNode.insertBefore(el, me.dom);
+            }else{
+                el = DH.insertBefore(me.dom, el);
+            }
+            
+            delete Element.cache[me.id];
+            Ext.removeNode(me.dom);      
+            me.id = Ext.id(me.dom = el);
+            return Element.cache[me.id] = me;        
+        },
+        
+        
+        
+        insertHtml : function(where, html, returnEl){
+            var el = DH.insertHtml(where, this.dom, html);
+            return returnEl ? Ext.get(el, GETDOC(el)) : el;
+        },
 	     
-	     scrollIntoView : function(container, hscroll){
+	    scrollIntoView : function(container, hscroll){
                 var d = this.getDocument();
 	            var c = Ext.getDom(container, d) || Ext.getBody(d).dom;
 	            var el = this.dom;
@@ -754,20 +739,26 @@
             var getStyle = 
              view && view.getComputedStyle ?
                 function GS(prop){
-                    if(!this.dom || Ext.isDocument(this.dom)) return null;
-                    var el = this.dom,
+                    var el = !this._isDoc ? this.dom : null,
                         v,                  
-                        cs;
+                        cs,
+                        out;
+                    
+                    if(!el || el == document || Ext.isDocument(el)) return null;    
                     prop = chkCache(prop);
-                    return (v = el.style[prop]) ? v : 
+                    out =  (v = el.style[prop]) ? v : 
                            (cs = view.getComputedStyle(el, "")) ? cs[prop] : null;
+                     // Webkit returns rgb values for transparent.
+                    if(Ext.isWebKit && out == 'rgba(0, 0, 0, 0)'){
+                        out = 'transparent';
+                    }
+                    return out;
                 } :
                 function GS(prop){
-                   if(!this.dom ||Ext.isDocument(this.dom)) return null;
-                   var el = this.dom, 
+                   var el = !this._isDoc ? this.dom : null, 
                         m, 
                         cs;     
-                         
+                    if(!el || el == document || Ext.isDocument(el)) return null;     
                     if (prop == 'opacity') {
                         if (el.style.filter.match) {                       
                             if(m = el.style.filter.match(opacityRe)){
@@ -787,7 +778,7 @@
         }(),
         
         setStyle : function(prop, value){
-            if(Ext.isDocument(this.dom)) return this;
+            if(this._isDoc || Ext.isDocument(this.dom)) return this;
             var tmp, 
                 style,
                 camel;
@@ -1075,7 +1066,7 @@
                 b = D.body, 
                 depth = 0,              
                 stopEl;         
-            if(Ext.isGecko && OP.toString.call(p) == '[object XULElement]') {
+            if(Ext.isGecko && OPString.call(p) == '[object XULElement]') {
                 return null;
             }
             maxDepth = maxDepth || 50;
@@ -1261,17 +1252,33 @@
 	        }])
     });
     
-    
-    Ext.fly = El.fly = Ext.overload([
-        El.fly,  // existing 2 arg form
-        function(el){
-            return El.fly(el, null);
-        },
-        function(el,named,doc){
-            return El.fly(Ext.getDom(el, doc), named);
-        }
-    ]);
+    var GETDOC = ELD.getDocument,
+        flies = El._flyweights;
         
+    
+    
+    Ext.fly = El.fly = function(el, named, doc){
+	    var ret = null;
+	    named = named || '_global';
+    
+        if (el = Ext.getDom(el, doc)) {
+	        (ret = flies[named] = (flies[named] || new El.Flyweight())).dom = el;
+            ret._isDoc = Ext.isDocument(el); 
+	    }
+	    return ret;
+	}; 
+    
+    var flyFn = function(){};
+	flyFn.prototype = El.prototype;
+	
+	// dom is optional
+	El.Flyweight = function(dom){
+	    this.dom = dom;
+	};
+	
+	El.Flyweight.prototype = new flyFn();
+	El.Flyweight.prototype.isFlyweight = true;
+    
     
     Ext.provide && Ext.provide('multidom');
  })();
@@ -1358,11 +1365,6 @@
              
             cls   :  'ux-mif',
              
-            visibilityMode :  Ext.isIE ? El.DISPLAY : 3, //nosize class mode
-             
-           
-	        visibilityCls : 'x-hide-nosize',   
-             
             constructor : function(element, forceNew, doc ){
                 var d = doc || document;
                 var elCache  = ELD.resolveCache ? ELD.resolveCache(d)._elCache : El.cache ;
@@ -1433,6 +1435,28 @@
                 this.reset(); 
                 this.manager = null;
                 this.dom.ownerCt = null;
+            },
+            
+             
+           setDisplayed : function(value) {
+                var me=this;
+                if(this.visibilityCls){
+                    me[value !== false ?'removeClass':'addClass'](this.visibilityCls);
+                    return me;
+                }
+                return ElFrame.superclass.setDisplayed.call(this, value);
+            },
+            
+            // private
+            fixDisplay : function(){
+                var me = this;
+                ElFrame.superclass.fixDisplay.call(me);
+                me.visibilityCls && me.removeClass(me.visibilityCls); 
+            },
+    
+            
+            isVisible : function() {
+                return ElFrame.superclass.isVisible.call(this) || !this.hasClass(this.visibilityCls);
             },
 
             
@@ -1711,7 +1735,7 @@
 		         if(dom && dom.parentNode && dom.tagName != 'BODY'){
                     
                     if(!dom.ownerDocument || dom.ownerDocument != this.getFrameDocument()){
-                        throw 'Invalid document context exception';
+                        throw new MIF.Error('documentcontext-remove' , dom.ownerDocument);
                     }
 		            var el, docCache = this._domCache;
 		            if(docCache && (el = docCache._elCache[dom.id])){
@@ -1884,7 +1908,7 @@
                         win.print();
                     }
                 } catch (ex) {
-                    throw 'print exception: ' + (ex.description || ex.message || ex);
+                    throw new MIF.Error('printexception' , ex.description || ex.message || ex);
                 }
                 return this;
             },
@@ -1905,7 +1929,7 @@
                             return this._windowContext.eval(block);
                         }
                     } else {
-                        throw 'execScript:non-secure context'
+                        throw new MIF.Error('execscript-secure-context');
                     }
                 } catch (ex) {
                     this._observable.fireEvent.call(this._observable,'exception', this, ex);
@@ -2237,8 +2261,6 @@
    
     ElFrame = Ext.Element.IFRAME = Ext.Element.FRAME = Ext.ux.ManagedIFrame.Element;
     
-    
-    ElFrame.NOSIZE = 3;
       
     var fp = ElFrame.prototype;
     
@@ -2267,7 +2289,7 @@
         
         unsupportedText : 'Inline frames are NOT enabled\/supported by your browser.',
         
-        hideMode   : !Ext.isIE ? 'nosize' : 'display',
+        hideMode   : !Ext.isIE && !!Ext.ux.plugin.VisibilityMode ? 'nosize' : 'display',
         
         animCollapse  : Ext.isIE ,
 
@@ -2429,10 +2451,9 @@
             
             ctype     : "Ext.ux.ManagedIFrame.Component",
             
-            //TODO: autoScroll :  true,
-            
             
             initComponent : function() {
+               
                 var C = {
 	                monitorResize : this.monitorResize || (this.monitorResize = !!this.fitToParent),
 	                plugins : (this.plugins ||[]).concat(
@@ -2495,14 +2516,7 @@
                     
                     F._observable && 
                         (this.relayTarget || this).relayEvents(F._observable, frameEvents.concat(this._msgTagHandlers || []));
-                        
                     
-                    // Set the Visibility Mode for the iframe
-                    // collapse/expands/hide/show
-                    F.setVisibilityMode(
-                        (this.hideMode ? El[this.hideMode.toUpperCase()] : null) 
-                        || ElFrame.NOSIZE);
-
                     if(this.defaultSrc){
                         F.setSrc (this.defaultSrc);
                     } else if(this.html) {
@@ -2514,6 +2528,7 @@
                     } else {
                         F.reset();
                     }
+                    
                  }
                  
             },
@@ -2529,8 +2544,9 @@
                     this.setSize(size.width - pos[0], size.height - pos[1]);
                 }
                 this.setAutoScroll();
+                var F;
                
-                if(this.frameEl){
+                if(F = this.frameEl){
                     var ownerCt = this.ownerCt;
                     while (ownerCt) {
                         ownerCt.on('afterlayout', function(container, layout) {
@@ -2547,8 +2563,9 @@
                         ownerCt = ownerCt.ownerCt; // nested layouts?
                     }
                     
-                    if(!!this.ownerCt || this.useShim ){ this.shim = this.frameEl.createShim(); }
+                    if(!!this.ownerCt || this.useShim ){ this.shim = F.createShim(); }
                     this.getUpdater().showLoadIndicator = this.showLoadIndicator || false;
+                    
                     this.doAutoLoad();
                 }
             },
@@ -2951,6 +2968,20 @@
     };
 
     
+	Ext.ux.ManagedIFrame.Error = Ext.extend(Ext.Error, {
+	    constructor : function(message, arg) {
+	        this.arg = arg;
+	        Ext.Error.call(this, message);
+	    },
+	    name : 'Ext.ux.ManagedIFrame'
+	});
+	Ext.apply(Ext.ux.ManagedIFrame.Error.prototype, {
+	    lang: {
+	        'documentcontext-remove': 'An attempt was made to remove an Element from the wrong document context.',
+	        'execscript-secure-context': 'An attempt was made at script execution within a document context with limited access permissions.',
+	        'printexception': 'An Error was encountered attempting the print the frame contents (document access is likely restricted).'
+	    }
+	});
     
     
      Ext.onReady(function() {
