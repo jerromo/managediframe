@@ -5,8 +5,8 @@
  * This file is distributed on an AS IS BASIS WITHOUT ANY WARRANTY; without even
  * the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  * ***********************************************************************************
- * @version 2.0 RC3
- * [For Ext 3.0 RC2.1 or higher only]
+ * @version 2.0 
+ * [For Ext 3.0 or higher only]
  *
  * License: ux.ManagedIFrame, ux.ManagedIFrame.Panel, ux.ManagedIFrame.Window  
  * are licensed under the terms of the Open Source GPL 3.0 license:
@@ -96,7 +96,7 @@
     /**
      * @class Ext.ux.ManagedIFrame.Element
      * @extends Ext.Element
-     * @version 2.0 RC2
+     * @version 2.0 
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a> 
      * @author Doug Hendricks. Forum ID: <a href="http://extjs.com/forum/member.php?u=8730">hendricd</a> 
      * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
@@ -110,15 +110,6 @@
     Ext.ux.ManagedIFrame.Element = Ext.extend(Ext.Element, {
              
             cls   :  'ux-mif',
-             
-            visibilityMode :  Ext.isIE ? El.DISPLAY : 3, //nosize class mode
-             
-           /**
-		    * Visibility class - Designed to set an Elements width and height to zero (or other CSS rule)
-		    * @property Ext.ux.ManagedIFrame.Element.visibilityCls
-		    * @type String
-		    */
-	        visibilityCls : 'x-hide-nosize',   
              
             constructor : function(element, forceNew, doc ){
                 var d = doc || document;
@@ -267,6 +258,35 @@
                 this.reset(); 
                 this.manager = null;
                 this.dom.ownerCt = null;
+            },
+            
+             /**
+             * Sets the CSS display property. Uses originalDisplay if the specified value is a boolean true.
+             * @param {Mixed} value Boolean value to display the element using its default display, or a string to set the display directly.
+             * @return {Ext.Element} this
+             */
+           setDisplayed : function(value) {
+                var me=this;
+                if(this.visibilityCls){
+                    me[value !== false ?'removeClass':'addClass'](this.visibilityCls);
+                    return me;
+                }
+                return ElFrame.superclass.setDisplayed.call(this, value);
+            },
+            
+            // private
+            fixDisplay : function(){
+                var me = this;
+                ElFrame.superclass.fixDisplay.call(me);
+                me.visibilityCls && me.removeClass(me.visibilityCls); 
+            },
+    
+            /**
+             * Checks whether the element is currently visible using both visibility, display, and nosize class properties.
+             * @return {Boolean} True if the FRAME Element is currently visible, else false
+             */
+            isVisible : function() {
+                return ElFrame.superclass.isVisible.call(this) || !this.hasClass(this.visibilityCls);
             },
 
             /**
@@ -739,7 +759,7 @@
 		         if(dom && dom.parentNode && dom.tagName != 'BODY'){
                     
                     if(!dom.ownerDocument || dom.ownerDocument != this.getFrameDocument()){
-                        throw 'Invalid document context exception';
+                        throw new MIF.Error('documentcontext-remove' , dom.ownerDocument);
                     }
 		            var el, docCache = this._domCache;
 		            if(docCache && (el = docCache._elCache[dom.id])){
@@ -948,7 +968,7 @@
                         win.print();
                     }
                 } catch (ex) {
-                    throw 'print exception: ' + (ex.description || ex.message || ex);
+                    throw new MIF.Error('printexception' , ex.description || ex.message || ex);
                 }
                 return this;
             },
@@ -983,7 +1003,7 @@
                             return this._windowContext.eval(block);
                         }
                     } else {
-                        throw 'execScript:non-secure context'
+                        throw new MIF.Error('execscript-secure-context');
                     }
                 } catch (ex) {
                     this._observable.fireEvent.call(this._observable,'exception', this, ex);
@@ -1426,14 +1446,6 @@
    
     ElFrame = Ext.Element.IFRAME = Ext.Element.FRAME = Ext.ux.ManagedIFrame.Element;
     
-    /**
-     * Visibility mode constant - Use a classname  to hide element
-     * @property Ext.ux.ManagedIFrame.Element.NOSIZE
-     * @default 3 (applies CSS rule x-hide-nosize to the Element when hidden)
-     * @static
-     * @type Number
-     */
-    ElFrame.NOSIZE = 3;
       
     var fp = ElFrame.prototype;
     /**
@@ -1467,7 +1479,7 @@
 
   /**
    * @class Ext.ux.ManagedIFrame.ComponentAdapter
-   * @version 2.0 RC2
+   * @version 2.0 
    * @author Doug Hendricks. doug[always-At]theactivegroup.com
    * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
    * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
@@ -1495,7 +1507,7 @@
          */
         unsupportedText : 'Inline frames are NOT enabled\/supported by your browser.',
         
-        hideMode   : !Ext.isIE ? 'nosize' : 'display',
+        hideMode   : !Ext.isIE && !!Ext.ux.plugin.VisibilityMode ? 'nosize' : 'display',
         
         animCollapse  : Ext.isIE ,
 
@@ -1888,7 +1900,7 @@
   /**
    * @class Ext.ux.ManagedIFrame.Component
    * @extends Ext.BoxComponent
-   * @version 2.0 RC2
+   * @version 2.0 
    * @author Doug Hendricks. doug[always-At]theactivegroup.com
    * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
    * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
@@ -1901,10 +1913,9 @@
             
             ctype     : "Ext.ux.ManagedIFrame.Component",
             
-            //TODO: autoScroll :  true,
-            
             /** @private */
             initComponent : function() {
+               
                 var C = {
 	                monitorResize : this.monitorResize || (this.monitorResize = !!this.fitToParent),
 	                plugins : (this.plugins ||[]).concat(
@@ -1967,14 +1978,7 @@
                     
                     F._observable && 
                         (this.relayTarget || this).relayEvents(F._observable, frameEvents.concat(this._msgTagHandlers || []));
-                        
                     
-                    // Set the Visibility Mode for the iframe
-                    // collapse/expands/hide/show
-                    F.setVisibilityMode(
-                        (this.hideMode ? El[this.hideMode.toUpperCase()] : null) 
-                        || ElFrame.NOSIZE);
-
                     if(this.defaultSrc){
                         F.setSrc (this.defaultSrc);
                     } else if(this.html) {
@@ -1986,6 +1990,7 @@
                     } else {
                         F.reset();
                     }
+                    
                  }
                  
             },
@@ -2001,12 +2006,13 @@
                     this.setSize(size.width - pos[0], size.height - pos[1]);
                 }
                 this.setAutoScroll();
+                var F;
                /* Enable auto-Shims if the Component participates in (nested?)
                 * border layout.
                 * Setup event handlers on the SplitBars and region panels to enable the frame
                 * shims when needed
                 */
-                if(this.frameEl){
+                if(F = this.frameEl){
                     var ownerCt = this.ownerCt;
                     while (ownerCt) {
                         ownerCt.on('afterlayout', function(container, layout) {
@@ -2025,8 +2031,9 @@
                     /*
                      * Create an img shim if the component participates in a layout or forced
                      */
-                    if(!!this.ownerCt || this.useShim ){ this.shim = this.frameEl.createShim(); }
+                    if(!!this.ownerCt || this.useShim ){ this.shim = F.createShim(); }
                     this.getUpdater().showLoadIndicator = this.showLoadIndicator || false;
+                    
                     this.doAutoLoad();
                 }
             },
@@ -2056,7 +2063,7 @@
   /**
    * @class Ext.ux.ManagedIFrame.Panel
    * @extends Ext.Panel
-   * @version 2.0 RC2
+   * @version 2.0 
    * @author Doug Hendricks. doug[always-At]theactivegroup.com
    * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
    * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
@@ -2101,7 +2108,7 @@
     /**
      * @class Ext.ux.ManagedIFrame.Portlet
      * @extends Ext.ux.ManagedIFrame.Panel
-     * @version 2.0 RC2
+     * @version 2.0 
      * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a> 
      * @author Doug Hendricks. Forum ID: <a href="http://extjs.com/forum/member.php?u=8730">hendricd</a> 
@@ -2128,7 +2135,7 @@
   /**
    * @class Ext.ux.ManagedIFrame.Window
    * @extends Ext.Window
-   * @version 2.0 RC2
+   * @version 2.0 
    * @author Doug Hendricks. 
    * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
    * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
@@ -2407,7 +2414,7 @@
 
     /**
      * @class Ext.ux.ManagedIFrame.Manager
-     * @version 2.0 RC1
+     * @version 2.0 
 	 * @author Doug Hendricks. doug[always-At]theactivegroup.com
 	 * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
 	 * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
@@ -2568,7 +2575,25 @@
         return mif;   
     };
 
-    
+    /**
+	 * @class Ext.ux.ManagedIFrame.Error
+     * @extends Ext.Error
+	 * Error class for MIF
+	 */
+	Ext.ux.ManagedIFrame.Error = Ext.extend(Ext.Error, {
+	    constructor : function(message, arg) {
+	        this.arg = arg;
+	        Ext.Error.call(this, message);
+	    },
+	    name : 'Ext.ux.ManagedIFrame'
+	});
+	Ext.apply(Ext.ux.ManagedIFrame.Error.prototype, {
+	    lang: {
+	        'documentcontext-remove': 'An attempt was made to remove an Element from the wrong document context.',
+	        'execscript-secure-context': 'An attempt was made at script execution within a document context with limited access permissions.',
+	        'printexception': 'An Error was encountered attempting the print the frame contents (document access is likely restricted).'
+	    }
+	});
     
     /** @private */
      Ext.onReady(function() {
