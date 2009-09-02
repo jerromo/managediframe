@@ -10,7 +10,7 @@
 
  /**
   * @class multidom
-  * @version 1.0
+  * @version 1.1
   * @license MIT 
   * @author Doug Hendricks. Forum ID: <a href="http://extjs.com/forum/member.php?u=8730">hendricd</a> 
   * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
@@ -46,15 +46,17 @@
  */
  
  (function(){   
-    
-    
+        
     /*
      * Ext.Element and Ext.lib.DOM enhancements.
      * Primarily provides the ability to interact with any document context
      * (not just the one Ext was loaded into).
      */
    var El = Ext.Element, ElFrame, ELD = Ext.lib.Dom, A = Ext.lib.Anim;
-   var emptyFn = function(){}, OP = Object.prototype;
+   var emptyFn = function(){}, 
+       OP = Object.prototype,
+       OPString = OP.toString,
+       HTMLDoc = '[object HTMLDocument]';
       
    /**
     * @private
@@ -68,7 +70,7 @@
     * @private
     */                          
     var resolveCache = ELD.resolveCache = function(doc, cacheId){
-        doc = ELD.getDocument(doc);
+        doc = GETDOC(doc);
 
         //Use Ext.Element.cache for top-level document
         var c = (doc == document? '$_top' : cacheId);
@@ -152,7 +154,7 @@
           ]),
           
         isArray : function(v){
-           return OP.toString.apply(v) == '[object Array]';
+           return OPString.apply(v) == '[object Array]';
         },
         
         isObject:function(obj){
@@ -167,8 +169,8 @@
          */
         isDocument : function(el, testOrigin){
             
-            var test = OP.toString.apply(el) == '[object HTMLDocument]' || (el && el.nodeType == 9);
-            if(test && !!testOrigin){
+            var test = OPString.call(el) == HTMLDoc || (el && el.nodeType == 9);
+            if(test && testOrigin){
                 try{
                     test = !!el.location;
                 }
@@ -182,7 +184,7 @@
             if( obj === null || obj === undefined )return false; 
             if(Ext.isArray(obj) || !!obj.callee || Ext.isNumber(obj.length) ) return true;
             
-            return !!((/NodeList|HTMLCollection/i).test(OP.toString.call(obj)) || //check for node list type
+            return !!((/NodeList|HTMLCollection/i).test(OPString.call(obj)) || //check for node list type
               //NodeList has an item and length property
               //IXMLDOMNodeList has nextNode method, needs to be checked first.
              obj.nextNode || obj.item || false); 
@@ -192,61 +194,71 @@
         },
         
         isEvent : function(obj){
-            return OP.toString.apply(obj) == '[object Event]' || (Ext.isObject(obj) && !Ext.type(o.constructor) && (window.event && obj.clientX && obj.clientX == window.event.clientX));
+            return OPString.apply(obj) == '[object Event]' || (Ext.isObject(obj) && !Ext.type(o.constructor) && (window.event && obj.clientX && obj.clientX == window.event.clientX));
         },
 
         isFunction: function(obj){
             return !!obj && typeof obj == 'function';
         },
         
-        isEventSupported : (function(){
-            
-              var TAGNAMES = {
-                  'select':'input','change':'input',
-                  'submit':'form','reset':'form',
-                  'error':'img','load':'img','abort':'img'
-                },
-                //Cached results
-                cache = {},
-                //Get a tokenized string of the form nodeName:type
-                getKey = function(type, el){
-                    
-                    var tEl = Ext.getDom(el);
-                    
-                    return (tEl ?
-                               (Ext.isElement(tEl) || Ext.isDocument(tEl) ?
-                                    tEl.nodeName.toLowerCase() :
-                                        el.self ? '#window' : el || '#object')
-                           : el || 'div') + ':' + type;
-                };
-    
-                return function (evName, testEl) {
-                  var el, isSupported = false;
-                  var eventName = 'on' + evName;
-                  var tag = (testEl ? testEl : TAGNAMES[evName]) || 'div';
-                  var key = getKey(evName, tag);
-                  
-                  if(key in cache){
-                    //Use a previously cached result if available
-                    return cache[key];
-                  }
-                  
-                  el = Ext.isString(tag) ? document.createElement(tag): testEl;
-                  isSupported = (!!el && (eventName in el));
-                  
-                  isSupported || (isSupported = window.Event && !!(String(evName).toUpperCase() in window.Event));
-                  
-                  if (!isSupported && el) {
-                    el.setAttribute && el.setAttribute(eventName, 'return;');
-                    isSupported = Ext.isFunction(el[eventName]);
-                  }
-                  //save the cached result for future tests
-                  cache[key] = isSupported;
-                  el = null;
-                  return isSupported;
-               
+        /**
+         * Determine whether a specified DOMEvent is supported by a given HTMLElement or Object.
+         * @param {String} type The eventName (without the 'on' prefix)
+         * @param {HTMLElement/Object/String} testEl (optional) A specific HTMLElement/Object to test against, otherwise a tagName to test against.
+         * based on the passed eventName is used, or DIV as default. 
+         * @return {Boolean} True if the passed object supports the named event. 
+         */  
+        isEventSupported : function(evName, testEl){
+            var TAGNAMES = {
+              'select':'input',
+              'change':'input',
+              'submit':'form',
+              'reset':'form',
+              'load':'img',
+              'error':'img',
+              'abort':'img'
+            }
+            //Cached results
+            var cache = {};
+            //Get a tokenized string of the form nodeName:type
+            var getKey = function(type, el){
+                
+                var tEl = Ext.getDom(el);
+                
+                return (tEl ?
+                           (Ext.isElement(tEl) || Ext.isDocument(tEl) ?
+                                tEl.nodeName.toLowerCase() :
+                                    el.self ? '#window' : el || '#object')
+                       : el || 'div') + ':' + type;
             };
-        })()
+
+            return function (evName, testEl) {
+              var el, isSupported = false;
+              var eventName = 'on' + evName;
+              var tag = (testEl ? testEl : TAGNAMES[evName]) || 'div';
+              var key = getKey(evName, tag);
+              
+              if(key in cache){
+                //Use a previously cached result if available
+                return cache[key];
+              }
+              
+              el = Ext.isString(tag) ? document.createElement(tag): testEl;
+              isSupported = (!!el && (eventName in el));
+              
+              isSupported || (isSupported = window.Event && !!(String(evName).toUpperCase() in window.Event));
+              
+              if (!isSupported && el) {
+                el.setAttribute && el.setAttribute(eventName, 'return;');
+                isSupported = Ext.isFunction(el[eventName]);
+              }
+              //save the cached result for future tests
+              cache[key] = isSupported;
+              el = null;
+              return isSupported;
+            };
+
+        }()
     });
        
    
@@ -265,7 +277,7 @@
         if (!libFlyweight) {
             libFlyweight = new Ext.Element.Flyweight();
         }
-        libFlyweight.dom = doc ? Ext.getDom(el, doc) : Ext.getDom(el);
+        libFlyweight.dom = Ext.getDom(el, doc);
         return libFlyweight;
     }
    
@@ -277,24 +289,18 @@
      *
      */
 
-      get : Ext.overload([
-        Ext.get,
-        function(el, doc, elcache){  //named-cache optimized
-            try{doc = doc?doc.dom||doc:null;}catch(docErr){doc = null;}
-            //resolve from named cache first
-            return el && doc ? resolveCache(doc,elcache)._elCache[el.id] || this.get(el, doc) : null ;
-        },
-        function(el, doc){         //document targeted
-            if(!el || !doc ){ return null; }
-            
+      get : El.get = function(el, doc){         //document targeted
+            if(!el ){ return null; }
+            doc || (doc = document);
             if(!Ext.isDocument(doc)) {
                 return this.get(el); //a bad get signature
              }
             var ex, elm, id, cache = resolveCache(doc);
             if(Ext.isDocument(el)){
+                
                 if(!Ext.isDocument(el, true)){ return false; }  //is it accessible
+
                 // create a bogus element object representing the document object
-                if(el == self.document){ return this.get(el); }
                 if(cache._elCache['$_doc']){
                     return cache._elCache['$_doc'];
                 }
@@ -302,13 +308,16 @@
                 f.prototype = El.prototype;
                 var docEl = new f();
                 docEl.dom = el;
+                docEl._isDoc = true;
                 return cache._elCache['$_doc'] = docEl;
              }
              
              cache = cache._elCache;
              
              if(typeof el == "string"){ // element id
+                
                 elm = Ext.getDom(el,doc);
+                
                 if(!elm) return null;
                 
                 if(ex = cache[el]){
@@ -316,16 +325,18 @@
                 }else{
                     ex = cache[el] = new (assertClass(elm))(elm, null, doc);
                 }
+                
                 return ex;
              }else if(el.tagName){ // dom element
-                if(!(id = el.id)){
-                    id = Ext.id(el);
-                }
-                if(ex = cache[id]){
+                
+                doc = GETDOC(el);
+                cache = resolveCache(doc);
+                if(ex = cache[el.id || (el.id = Ext.id(el))]){
                     ex.dom = el;
                 }else{
-                    ex = cache[id] = new (assertClass(el))(el, null, doc);
+                    ex = cache[el.id] = new (assertClass(el))(el, null, doc);
                 }
+                
                 return ex;
             }else if(el instanceof El || el instanceof El['IFRAME']){
                 
@@ -342,7 +353,7 @@
             }
            return null;
 
-    }]),
+    },
      
      /**
       * Ext.getDom to support targeted document contexts
@@ -356,23 +367,17 @@
      * @param {HTMLDocument} doc (optional)
      * @return Ext.Element The document's body
      */
-     getBody : Ext.overload([
-        
-        Ext.getBody,
-        
-        function(doc){
-            var D = ELD.getDocument(doc) || {};
-            return Ext.get(D.body || D.documentElement);
-        }
-       ]),
+     getBody : function(doc){
+            var D = ELD.getDocument(doc) || document;
+            return Ext.get(D.body || D.documentElement, D);
+       },
        
      getDoc :Ext.overload([ 
        Ext.getDoc, 
        function(doc){ return Ext.get(doc,doc); }
        ])
    });      
-
-
+   
     var propCache = {},
         camelRe = /(-[a-z])/gi,
         camelFn = function(m, a){ return a.charAt(1).toUpperCase(); },
@@ -402,134 +407,25 @@
         paddings = {l: PADDING + LEFT, r: PADDING + RIGHT, t: PADDING + TOP, b: PADDING + BOTTOM},
         margins = {l: MARGIN + LEFT, r: MARGIN + RIGHT, t: MARGIN + TOP, b: MARGIN + BOTTOM},
         data = El.data,
+        GETDOM = Ext.getDom,
+        GET = Ext.get,
+        DH = Ext.DomHelper,
         CSS = Ext.util.CSS;  //Not available in Ext Core.
     
     function chkCache(prop) {
         return propCache[prop] || (propCache[prop] = prop == 'float' ? propFloat : prop.replace(camelRe, camelFn));
     };
     
-    /**
-     * Visibility mode constant - Use a static className to hide element
-     * @static
-     */
-    El.NOSIZE  = 3; //Compat for previous Ext releases  
-    El.ASCLASS = 3;
     
-    if(CSS){
-      Ext.onReady(function(){
-	        CSS.getRule('.x-hide-nosize') || //already defined?
-	            CSS.createStyleSheet('.x-hide-nosize{height:0px!important;width:0px!important;border:none!important;zoom:1;}.x-hide-nosize * {height:0px!important;width:0px!important;border:none!important;zoom:1;}');
-	        CSS.refreshCache();
-      });
-    }
-      
-   /**
-    * Visibility class - Designed to set an Elements width and height to zero (or other CSS rule)
-    * This important rule solves many of the <object/iframe>.reInit issues encountered
-    * when setting display:none on an upstream(parent) element.
-    * This default rule enables the new Component hideMode:'asclass'. The rule is designed to
-    * set height/width to 0 (or other strategy) cia CSS if hidden or collapsed.
-    * Additional selectors also hide nested DOM Elements within layouts to prevent
-    * container and <object, img, iframe> bleed-thru.
-    * 
-    * Notes: Ext Core does not have the Ext.util.CSS singleton (as the full Ext framework does). 
-    * An equivalent style Rule must be added to an Ext Core page similar to:
-    * <pre><code>.x-hide-nosize, .x-hide-nosize * {height:0px!important;width:0px!important;border:none!important;zoom:1;}
-    * </code></pre>
-    * which matched the visibilityCls property set on the Element Class or instance.
-    * (Or you can define a strategy of your own).
-    * @static
-    * @type String
-    * @default 'x-hide-nosize'
-    */
-    El.visibilityCls = 'x-hide-nosize';
-
     El.addMethods({
         /**
          * Resolves the current document context of this Element
          */
         getDocument : function(){
-           return ELD.getDocument(this);  
+           return GETDOC(this);  
         },
-        
-       /**
-        * Gets the element's visibility mode. 
-        * @return {Number} Ext.Element[VISIBILITY, DISPLAY, ASCLASS]
-        */
-        getVisibilityMode :  function(){  
-                
-                var dom = this.dom, 
-                    mode = (dom && Ext.isFunction(data)) ? data(dom,VISMODE) : this[VISMODE];
-                if(mode === undefined){
-                   mode = 1;
-                   (dom && Ext.isFunction(data)) ? data(dom, VISMODE, mode) : (this[VISMODE] = mode);
-                }
-                return mode;
-           },
-                  
-        setVisible : function(visible, animate){
-            var me = this,
-                dom = me.dom,
-                visMode = me.getVisibilityMode();
-                
-            if(!dom)return me;   
-            if(!animate || !A){
-                if(visMode === El.DISPLAY){
-                    me.setDisplayed(visible);
-                }else if(visMode === El.VISIBILITY){
-                    me.fixDisplay();
-                    dom.style.visibility = visible ? "visible" : "hidden";
-                }else if(visMode === El.ASCLASS){
-                    me[visible?'removeClass':'addClass'](me.visibilityCls || El.visibilityCls);
-                }
-
-            }else{
-               
-                if(visible){
-                    me.setOpacity(.01);
-                    me.setVisible(true);
-                }
-                me.anim({opacity: { to: (visible?1:0) }},
-                      me.preanim(arguments, 1),
-                      null, .35, 'easeIn', function(){
-                         if(!visible){
-                             if(visMode === El.DISPLAY){
-                                 dom.style.display = "none";
-                             }else if(visMode === El.VISIBILITY){
-                                 dom.style.visibility = "hidden";
-                             }else if(visMode === El.ASCLASS){
-                                 me.addClass(me.visibilityCls || El.visibilityCls);
-                             }
-                             me.setOpacity(1);
-                         }
-                     });
-            }
-            return me;
-        },
-
-        /**
-         * Checks whether the element is currently visible using both visibility, display, and nosize class properties.
-         * @param {Boolean} deep (optional) True to walk the dom and see if parent elements are hidden (defaults to false)
-         * @return {Boolean} True if the element is currently visible, else false
-         */
-        isVisible : function(deep) {
-            var vis = !( this.getStyle("visibility") === "hidden" || 
-                         this.getStyle("display") === "none" || 
-                         this.hasClass(this.visibilityCls || El.visibilityCls));
-            if(this.dom && deep && vis){
-                var p = this.dom.parentNode;
-                while(p && p.tagName.toLowerCase() !== "body"){
-                    if(!Ext.fly(p, '_isVisible').isVisible()){
-                        vis = false;
-                        break;
-                    }
-                    p = p.parentNode;
-                }
-                delete El._flyweights['_isVisible']; //orphan reference cleanup
-            }
-            return vis;
-        },
-        
+       
+           
         /**
 	  * Removes this element from the DOM and deletes it from the cache
 	  * @param {Boolean} cleanse (optional) Perform a cleanse of immediate childNodes as well.
@@ -570,8 +466,116 @@
 	         this.isCleansed = true;
 	         return this;
 	     },
+         
+         /**
+         * Appends the passed element(s) to this element
+         * @param {String/HTMLElement/Array/Element/CompositeElement} el
+         * @param {Document} doc (optional) specific document context for the Element search
+         * @return {Ext.Element} this
+         */
+        appendChild: function(el, doc){        
+            return GET(el, doc || this.getDocument()).appendTo(this);        
+        },
+    
+        /**
+         * Appends this element to the passed element
+         * @param {Mixed} el The new parent element
+         * @param {Document} doc (optional) specific document context for the Element search
+         * @return {Ext.Element} this
+         */
+        appendTo: function(el, doc){        
+            GETDOM(el, doc || this.getDocument()).appendChild(this.dom);        
+            return this;
+        },
+    
+        /**
+         * Inserts this element before the passed element in the DOM
+         * @param {Mixed} el The element before which this element will be inserted
+         * @param {Document} doc (optional) specific document context for the Element search
+         * @return {Ext.Element} this
+         */
+        insertBefore: function(el, doc){               
+            (el = GETDOM(el, doc || this.getDocument())).parentNode.insertBefore(this.dom, el);
+            return this;
+        },
+    
+        /**
+         * Inserts this element after the passed element in the DOM
+         * @param {Mixed} el The element to insert after
+         * @param {Document} doc (optional) specific document context for the Element search
+         * @return {Ext.Element} this
+         */
+        insertAfter: function(el, doc){
+            (el = GETDOM(el, doc || this.getDocument())).parentNode.insertBefore(this.dom, el.nextSibling);
+            return this;
+        },
+    
+        /**
+         * Inserts (or creates) an element (or DomHelper config) as the first child of this element
+         * @param {Mixed/Object} el The id or element to insert or a DomHelper config to create and insert
+         * @param {Document} doc (optional) specific document context for the Element search
+         * @return {Ext.Element} The new child
+         */
+        insertFirst: function(el, returnDom){
+            el = el || {};
+            if(el.nodeType || el.dom || typeof el == 'string'){ // element
+                el = GETDOM(el);
+                this.dom.insertBefore(el, this.dom.firstChild);
+                return !returnDom ? GET(el) : el;
+            }else{ // dh config
+                return this.createChild(el, this.dom.firstChild, returnDom);
+            }
+        },
+    
+        /**
+         * Replaces the passed element with this element
+         * @param {Mixed} el The element to replace
+         * @param {Document} doc (optional) specific document context for the Element search
+         * @return {Ext.Element} this
+         */
+        replace: function(el, doc){
+            el = GET(el, doc || this.getDocument());
+            this.insertBefore(el);
+            el.remove();
+            return this;
+        },
+    
+        /**
+         * Replaces this element with the passed element
+         * @param {Mixed/Object} el The new element or a DomHelper config of an element to create
+         * @param {Document} doc (optional) specific document context for the Element search         
+         * @return {Ext.Element} this
+         */
+        replaceWith: function(el, doc){
+            var me = this,
+                Element = Ext.Element;
+            if(el.nodeType || el.dom || typeof el == 'string'){
+                el = GETDOM(el, doc || me.getDocument());
+                me.dom.parentNode.insertBefore(el, me.dom);
+            }else{
+                el = DH.insertBefore(me.dom, el);
+            }
+            
+            delete Element.cache[me.id];
+            Ext.removeNode(me.dom);      
+            me.id = Ext.id(me.dom = el);
+            return Element.cache[me.id] = me;        
+        },
+        
+        
+        /**
+         * Inserts an html fragment into this element
+         * @param {String} where Where to insert the html in relation to this element - beforeBegin, afterBegin, beforeEnd, afterEnd.
+         * @param {String} html The HTML fragment
+         * @param {Boolean} returnEl (optional) True to return an Ext.Element (defaults to false)
+         * @return {HTMLElement/Ext.Element} The inserted node (or nearest related if more than 1 inserted)
+         */
+        insertHtml : function(where, html, returnEl){
+            var el = DH.insertHtml(where, this.dom, html);
+            return returnEl ? Ext.get(el, GETDOC(el)) : el;
+        },
 	     
-	     scrollIntoView : function(container, hscroll){
+	    scrollIntoView : function(container, hscroll){
                 var d = this.getDocument();
 	            var c = Ext.getDom(container, d) || Ext.getBody(d).dom;
 	            var el = this.dom;
@@ -647,20 +651,26 @@
             var getStyle = 
              view && view.getComputedStyle ?
                 function GS(prop){
-                    if(!this.dom || Ext.isDocument(this.dom)) return null;
-                    var el = this.dom,
+                    var el = !this._isDoc ? this.dom : null,
                         v,                  
-                        cs;
+                        cs,
+                        out;
+                    
+                    if(!el || el == document || Ext.isDocument(el)) return null;    
                     prop = chkCache(prop);
-                    return (v = el.style[prop]) ? v : 
+                    out =  (v = el.style[prop]) ? v : 
                            (cs = view.getComputedStyle(el, "")) ? cs[prop] : null;
+                     // Webkit returns rgb values for transparent.
+                    if(Ext.isWebKit && out == 'rgba(0, 0, 0, 0)'){
+                        out = 'transparent';
+                    }
+                    return out;
                 } :
                 function GS(prop){
-                   if(!this.dom ||Ext.isDocument(this.dom)) return null;
-                   var el = this.dom, 
+                   var el = !this._isDoc ? this.dom : null, 
                         m, 
                         cs;     
-                         
+                    if(!el || el == document || Ext.isDocument(el)) return null;     
                     if (prop == 'opacity') {
                         if (el.style.filter.match) {                       
                             if(m = el.style.filter.match(opacityRe)){
@@ -685,7 +695,7 @@
          * @return {Ext.Element} this
          */
         setStyle : function(prop, value){
-            if(Ext.isDocument(this.dom)) return this;
+            if(this._isDoc || Ext.isDocument(this.dom)) return this;
             var tmp, 
                 style,
                 camel;
@@ -1028,7 +1038,7 @@
                 b = D.body, 
                 depth = 0,              
                 stopEl;         
-            if(Ext.isGecko && OP.toString.call(p) == '[object XULElement]') {
+            if(Ext.isGecko && OPString.call(p) == '[object XULElement]') {
                 return null;
             }
             maxDepth = maxDepth || 50;
@@ -1218,20 +1228,36 @@
 	        }])
     });
     
+    var GETDOC = ELD.getDocument,
+        flies = El._flyweights;
+        
     /**
      * @private
-     * Overload Ext.fly to support targeted document contexts
+     * Add Ext.fly support for targeted document contexts
      */
-    Ext.fly = El.fly = Ext.overload([
-        El.fly,  // existing 2 arg form
-        function(el){
-            return El.fly(el, null);
-        },
-        function(el,named,doc){
-            return El.fly(Ext.getDom(el, doc), named);
-        }
-    ]);
-        
+    
+    Ext.fly = El.fly = function(el, named, doc){
+	    var ret = null;
+	    named = named || '_global';
+    
+        if (el = Ext.getDom(el, doc)) {
+	        (ret = flies[named] = (flies[named] || new El.Flyweight())).dom = el;
+            ret._isDoc = Ext.isDocument(el); 
+	    }
+	    return ret;
+	}; 
+    
+    var flyFn = function(){};
+	flyFn.prototype = El.prototype;
+	
+	// dom is optional
+	El.Flyweight = function(dom){
+	    this.dom = dom;
+	};
+	
+	El.Flyweight.prototype = new flyFn();
+	El.Flyweight.prototype.isFlyweight = true;
+    
     /** @sourceURL=<multidom.js> */
     Ext.provide && Ext.provide('multidom');
  })();
