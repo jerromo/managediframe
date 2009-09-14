@@ -81,7 +81,7 @@ Use MIF's domready event and iframe DOM interface to query the frame document fo
 {{{
   Ext.onReady(function(){
        Ext.BLANK_IMAGE_URL = '../resources/images/default/s.gif';
-        var MIF = new Ext.ux.ManagedIframePanel({
+        var MIF = new Ext.ux.ManagedIFramePanel({
                     border: false,
                     bodyBorder: false,
                     defaultSrc:'index.html',
