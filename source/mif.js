@@ -245,7 +245,7 @@
             },
 
             /** @private
-             * Removes the MIFElement interface from the DOM FRAME Element.
+             * Removes the MIFElement interface from the FRAME Element.
              * It does NOT remove the managed FRAME from the DOM.  Use the {@link remove} method to perfom both functions.
              */
             destructor   :  function () {
@@ -316,7 +316,7 @@
              * @property  
              * @type {String|Function}
              */
-            src : null,
+            src     : null,
 
             /** (read-only) For "same-origin" frames only.  Provides a reference to
              * the Ext.util.CSS singleton to manipulate the style sheets of the frame's
@@ -325,21 +325,22 @@
              * @property
              * @type Ext.util.CSS
              */
-            CSS : null,
+            CSS     : null,
 
             /** Provides a reference to the managing Ext.ux.MIF.Manager instance.
              *
              * @property
              * @type Ext.ux.MIF.Manager
              */
-             manager : null,
+            manager : null,
+
             /**
               * Enables/disables internal cross-frame messaging interface
               * @cfg {Boolean} disableMessaging False to enable cross-frame messaging API
               * Default = true
               *
               */
-            disableMessaging         :  true,
+            disableMessaging  :  true,
 
              /**
               * Maximum number of domready event detection retries for IE.  IE does not provide
@@ -368,7 +369,6 @@
               * Default = true
               *
               */
-
             eventsFollowFrameLinks   : true,
 
             /** @private */
@@ -378,7 +378,7 @@
              * Removes the FRAME from the DOM and deletes it from the cache
              */
             remove  : function(){
-                this.destructor.apply(this,arguments);
+                this.destructor.apply(this, arguments);
                 ElFrame.superclass.remove.apply(this,arguments);
             },
             
@@ -396,20 +396,22 @@
 	         *
 	         * @param {Object} submitCfg A config object containing any of the following options:
 	         * <pre><code>
-	         *      mifPanel.submitAsTarget({
+	         *      myIframe.submitAsTarget({
 	         *         form : formPanel.form,  //optional Ext.FormPanel, Ext form element, or HTMLFormElement
 	         *         url: &quot;your-url.php&quot;,
-	         *         params: {param1: &quot;foo&quot;, param2: &quot;bar&quot;}, // or a URL encoded string
-	         *         callback: yourFunction,  //optional, called with the signature (frame, responseContent)
+             *         action : (see url) ,
+	         *         params: {param1: &quot;foo&quot;, param2: &quot;bar&quot;}, // or URL encoded string or function that returns either
+	         *         callback: yourFunction,  //optional, called with the signature (frame)
 	         *         scope: yourObject, // optional scope for the callback
 	         *         method: 'POST', //optional form.action (default:'POST')
              *         encoding : "multipart/form-data" //optional, default = HTMLForm default  
 	         *      });
 	         *
 	         * </code></pre>
+             * @return {Ext.ux.ManagedIFrame.Element} this
 	         *
 	         */
-            submitAsTarget : function(submitCfg){ //form, url, params, callback, scope){
+            submitAsTarget : function(submitCfg){
                 var opt = submitCfg || {}, D = this.getDocument();
 		        
 		        var form = opt.form || Ext.DomHelper.append(D.body, { tag: 'form', cls : 'x-hidden'});
@@ -418,12 +420,13 @@
 		        form.target = this.dom.name;
 		        form.method = opt.method || 'POST';
 		        opt.encoding && (form.enctype = form.encoding = String(opt.encoding));
-		        opt.url && (form.action = opt.url);
+		        (opt.action || opt.url) && (form.action = opt.action || opt.url);
 		
 		        var hiddens, hd;
 		        if(opt.params){ // add any additional dynamic params
 		            hiddens = [];
-		            var ps = typeof opt.params == 'string'? Ext.urlDecode(params, false): opt.params;
+                    var ps = Ext.isFunction(opt.params) ? opt.params() : opt.params;
+		            ps = typeof ps == 'string'? Ext.urlDecode(ps, false): ps;
 		            for(var k in ps){
 		                if(ps.hasOwnProperty(k)){
 		                    hd = D.createElement('input');
@@ -453,6 +456,8 @@
 		            Ext.fly(form,'_dynaForm').hasClass('x-hidden') && Ext.removeNode(form);
 		            this.hideMask(true);
 		        }).defer(100, this);
+                
+                return this;
 		    },
 
             /**
@@ -802,13 +807,13 @@
                                             ? 'window'
                                             : '{eval:function(s){return eval(s);}}')
                                     + ';})()')) {
-                        var w;
+                        var w, p = this._frameProxy;
                         if(w = this.getWindow()){
-                            this._frameProxy || (this._frameProxy = this._eventProxy.createDelegate(this));    
-                            addListener(w, 'focus', this._frameProxy);
-                            addListener(w, 'blur', this._frameProxy);
-                            addListener(w, 'resize', this._frameProxy);
-                            addListener(w, 'unload', this._frameProxy);
+                            p || (p = this._frameProxy = this._eventProxy.createDelegate(this));    
+                            addListener(w, 'focus', p);
+                            addListener(w, 'blur', p);
+                            addListener(w, 'resize', p);
+                            addListener(w, 'unload', p);
                         }
                         var D = this.getFrameDocument();
                         D && (this.CSS = new CSSInterface(D));
@@ -832,12 +837,12 @@
                     this._windowContext && (this._windowContext.hostMIF = null);
                     this._windowContext = null;
                 
-                    var w;
-                    if(this._frameProxy && (w = this.getWindow())){
-                        removeListener(w, 'focus', this._frameProxy);
-                        removeListener(w, 'blur', this._frameProxy);
-                        removeListener(w, 'resize', this._frameProxy);
-                        removeListener(w, 'unload', this._frameProxy);
+                    var w, p = this._frameProxy;
+                    if(p && (w = this.getWindow())){
+                        removeListener(w, 'focus', p);
+                        removeListener(w, 'blur', p);
+                        removeListener(w, 'resize', p);
+                        removeListener(w, 'unload', p);
                     }
                 }
                 MIM._flyweights = {};
@@ -946,6 +951,7 @@
             
             /**
              * Scrolls a frame document's child element into view within the passed container.
+             * @param {String} child The id of the element to scroll into view. 
              * @param {Mixed} container (optional) The container element to scroll (defaults to the frame's document.body).  Should be a 
              * string (id), dom node, or Ext.Element.
              * @param {Boolean} hscroll (optional) False to disable horizontal scroll (defaults to true)
@@ -1442,7 +1448,7 @@
 	            //(implemented by mifmsg.js )
 	        }
 
-   });
+    });
    
     ElFrame = Ext.Element.IFRAME = Ext.Element.FRAME = Ext.ux.ManagedIFrame.Element;
     
@@ -1500,6 +1506,8 @@
          * @default null
          */
         defaultSrc : null,
+        
+        title      : '&#160;',
         
         /**
          * @cfg {String} unsupportedText Text to display when the IFRAMES/FRAMESETS are disabled by the browser.
@@ -1563,9 +1571,14 @@
          * @param {Boolean} auto True to set overflow:auto on the frame, false for overflow:hidden
          */
         setAutoScroll : function(auto){
-            var scroll = Ext.value(auto,this.autoScroll===true);
+            var scroll = Ext.value(auto, this.autoScroll === true);
             this.rendered && this.getFrame() &&  
-                this.frameEl.setOverflow(scroll?'auto':'hidden');
+                this.frameEl.setOverflow( (this.autoScroll = scroll) ? 'auto':'hidden');
+            return this;
+        },
+        
+        getContentTarget : function(){
+            return this.getFrame();
         },
         
         /**
@@ -2019,10 +2032,12 @@
                             Ext.each(['north', 'south', 'east', 'west'],
                                     function(region) {
                                         var reg;
-                                        if ((reg = layout[region]) && reg.split && !reg._splitTrapped) {
-                                            reg.split.on('beforeresize',MIM.showShims, MIM);
-                                            reg.panel.on('resize', MIM.hideShims, MIM, {delay:1});
-                                            reg._splitTrapped = MIM._splitTrapped = true;
+                                        if ((reg = layout[region]) && 
+                                             reg.split && reg.split.dd &&
+                                             !reg._splitTrapped) {
+                                               reg.split.dd.endDrag = reg.split.dd.endDrag.createSequence(MIM.hideShims, MIM );
+                                               reg.split.on('beforeresize',MIM.showShims,MIM);
+                                               reg._splitTrapped = MIM._splitTrapped = true;
                                         }
                             }, this);
                         }, this, { single : true}); // and discard
@@ -2307,11 +2322,8 @@
                 },
 
                 /**
-                 * Refresh the rule cache if you have dynamically added
-                 * stylesheets
-                 *
-                 * @return {Object} An object (hash) of rules indexed by
-                 *         selector
+                 * Refresh the rule cache if you have dynamically added stylesheets
+                 * @return {Object} An object (hash) of rules indexed by selector
                  */
                 refreshCache : function() {
                     return this.getRules(true);
@@ -2321,14 +2333,60 @@
                 cacheStyleSheet : function(ss) {
                     this.rules || (this.rules = {});
                     
-                    try {// try catch for cross domain access issue
-                        var ssRules = ss.cssRules || ss.rules;
-                        for (var j = ssRules.length - 1; j >= 0; --j) {
-                          ssRules[j].selectorText &&
-                            (this.rules[ssRules[j].selectorText.toLowerCase()] = ssRules[j]);
-                        }
-                    } catch (e) {}
+                     try{// try catch for cross domain access issue
+			          
+				          Ext.each(ss.cssRules || ss.rules || [], 
+				            function(rule){ 
+				              this.hashRule(rule, ss, media);
+				          }, this);  
+				          
+				          //IE @imports
+				          Ext.each(ss.imports || [], 
+				           function(sheet){
+				              sheet && this.cacheStyleSheet(sheet,this.resolveMedia([sheet, sheet.parentStyleSheet]));
+				           }
+				          ,this);
+			          
+			        }catch(e){}
                 },
+                 // @private
+			   hashRule  :  function(rule, sheet, mediaOverride){
+			      
+			      var mediaSelector = mediaOverride || this.resolveMedia(rule);
+			      
+			      //W3C @media
+			      if( rule.cssRules || rule.rules){
+			          this.cacheStyleSheet(rule, this.resolveMedia([rule, rule.parentRule ]));
+			      } 
+			      
+			       //W3C @imports
+			      if(rule.styleSheet){ 
+			         this.cacheStyleSheet(rule.styleSheet, this.resolveMedia([rule, rule.ownerRule, rule.parentStyleSheet]));
+			      }
+			      
+			      rule.selectorText && 
+			        Ext.each((mediaSelector || '').split(','), 
+			           function(media){
+			            this.rules[((media ? media.trim() + ':' : '') + rule.selectorText).toLowerCase()] = rule;
+			        }, this);
+			      
+			   },
+			
+			   /**
+			    * @private
+			    * @param {Object/Array} rule CSS Rule (or array of Rules/sheets) to evaluate media types.
+			    * @return a comma-delimited string of media types. 
+			    */
+			   resolveMedia  : function(rule){
+			        var media;
+			        Ext.each([].concat(rule),function(r){
+			            if(r && r.media && r.media.length){
+			                media = r.media;
+			                return false;
+			            }
+			        });
+			        return media ? (Ext.isIE ? String(media) : media.mediaText ) : '';
+			     },
 
                 /**
                  * Gets all css rules for the document
@@ -2353,60 +2411,61 @@
                     return this.rules;
                 },
 
-                /**
-                 * Gets an an individual CSS rule by selector(s)
-                 *
-                 * @param {String/Array}
-                 *            selector The CSS selector or an array of selectors
-                 *            to try. The first selector that is found is
-                 *            returned.
-                 * @param {Boolean}
-                 *            refreshCache true to refresh the internal cache if
-                 *            you have recently updated any rules or added
-                 *            styles dynamically
-                 * @return {CSSRule} The CSS rule or null if one is not found
-                 */
-                getRule : function(selector, refreshCache) {
+               /**
+			    * Gets an an individual CSS rule by selector(s)
+			    * @param {String/Array} selector The CSS selector or an array of selectors to try. The first selector that is found is returned.
+			    * @param {Boolean} refreshCache true to refresh the internal cache if you have recently updated any rules or added styles dynamically
+			    * @param {String} mediaSelector Name of optional CSS media context (eg. print, screen)
+			    * @return {CSSRule} The CSS rule or null if one is not found
+			    */
+                getRule : function(selector, refreshCache, mediaSelector) {
                     var rs = this.getRules(refreshCache);
-                    if (!Ext.isArray(selector)) {
-                        return rs[selector.toLowerCase()];
-                    }
-                    for (var i = 0; i < selector.length; i++) {
-                        if (rs[selector[i]]) {
-                            return rs[selector[i].toLowerCase()];
-                        }
-                    }
-                    return null;
+
+			        if(Ext.type(mediaSelector) == 'string'){
+			            mediaSelector = mediaSelector.trim() + ':';
+			        }else{
+			            mediaSelector = '';
+			        }
+			
+			        if(!Ext.isArray(selector)){
+			            return rs[(mediaSelector + selector).toLowerCase()];
+			        }
+			        var select;
+			        for(var i = 0; i < selector.length; i++){
+			            select = (mediaSelector + selector[i]).toLowerCase();
+			            if(rs[select]){
+			                return rs[select];
+			            }
+			        }
+			        return null;
                 },
 
-                /**
-                 * Updates a rule property
-                 *
-                 * @param {String/Array}
-                 *            selector If it's an array it tries each selector
-                 *            until it finds one. Stops immediately once one is
-                 *            found.
-                 * @param {String}
-                 *            property The css property
-                 * @param {String}
-                 *            value The new value for the property
-                 * @return {Boolean} true If a rule was found and updated
-                 */
-                updateRule : function(selector, property, value) {
-                    if (!Ext.isArray(selector)) {
-                        var rule = this.getRule(selector);
-                        if (rule) {
-                            rule.style[property.replace(styleCamelRe, styleCamelFn)] = value;
-                            return true;
-                        }
-                    } else {
-                        for (var i = 0; i < selector.length; i++) {
-                            if (this.updateRule(selector[i], property, value)) {
-                                return true;
-                            }
-                        }
-                    }
-                    return false;
+               /**
+			    * Updates a rule property
+			    * @param {String/Array} selector If it's an array it tries each selector until it finds one. Stops immediately once one is found.
+			    * @param {String} property The css property
+			    * @param {String} value The new value for the property
+			    * @param {String} mediaSelector Name(s) of optional media contexts. Multiple may be specified, delimited by commas (eg. print,screen)
+			    * @return {Boolean} true If a rule was found and updated
+			    */
+                updateRule : function(selector, property, value, mediaSelector){
+    
+			         Ext.each((mediaSelector || '').split(','), function(mediaSelect){    
+			            if(!Ext.isArray(selector)){
+			                var rule = this.getRule(selector, false, mediaSelect);
+			                if(rule){
+			                    rule.style[property.replace(camelRe, camelFn)] = value;
+			                    return true;
+			                }
+			            }else{
+			                for(var i = 0; i < selector.length; i++){
+			                    if(this.updateRule(selector[i], property, value, mediaSelect)){
+			                        return true;
+			                    }
+			                }
+			            }
+			            return false;
+			         }, this);
                 }
             };
         }
@@ -2459,8 +2518,9 @@
              *
              */
             hideShims : function() {
-                this.shimsApplied && Ext.select('.' + this.shimCls, true).removeClass(this.shimCls+ '-on');
-                this.shimsApplied = false;
+                var mm = MIF.Manager;
+                mm.shimsApplied && Ext.select('.' + mm.shimCls, true).removeClass(mm.shimCls+ '-on');
+                mm.shimsApplied = false;
             },
 
             /**
@@ -2468,8 +2528,9 @@
              * @methodOf Ext.ux.MIF.Manager
              */
             showShims : function() {
-                !this.shimsApplied && Ext.select('.' + this.shimCls, true).addClass(this.shimCls+ '-on');
-                this.shimsApplied = true;
+                var mm = MIF.Manager;
+                !mm.shimsApplied && Ext.select('.' + mm.shimCls, true).addClass(mm.shimCls+ '-on');
+                mm.shimsApplied = true;
             },
 
             /**
@@ -2519,6 +2580,15 @@
     MIM = MIF.Manager;
     MIM.showDragMask = MIM.showShims;
     MIM.hideDragMask = MIM.hideShims;
+    
+    /**
+     * Shim all MIF's during a Window drag operation.
+     */
+    var winDD = Ext.Window.DD;
+    Ext.override(winDD, {
+       startDrag : winDD.prototype.startDrag.createInterceptor(MIM.showShims),
+       endDrag   : winDD.prototype.endDrag.createInterceptor(MIM.hideShims)
+    });
 
     //Previous release compatibility
     Ext.ux.ManagedIFramePanel = MIF.Panel;
@@ -2587,6 +2657,7 @@
 	    },
 	    name : 'Ext.ux.ManagedIFrame'
 	});
+    
 	Ext.apply(Ext.ux.ManagedIFrame.Error.prototype, {
 	    lang: {
 	        'documentcontext-remove': 'An attempt was made to remove an Element from the wrong document context.',
