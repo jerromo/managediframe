@@ -1,5 +1,5 @@
 /*
- * ux.ManagedIFrame.* 2.0 RC3
+ * ux.ManagedIFrame.* 2.0 
  * Copyright(c) 2007-2009, Active Group, Inc.
  * licensing@theactivegroup.com
  * 
@@ -24,98 +24,47 @@
 
 (function(){
 
-      var El = Ext.Element, A = Ext.lib.Anim,
-      VISMODE = 'visibilityMode',
-      ELDISPLAY = El.DISPLAY,
-      data = El.data; // > Ext 3 RC2 only
-      
-      if(!El.ASCLASS){
+      var El = Ext.Element, A = Ext.lib.Anim, supr = El.prototype; 
+      var VISIBILITY = "visibility",
+        DISPLAY = "display",
+        HIDDEN = "hidden",
+        NONE = "none";
+        
+      var fx = {};
+    
+      fx.El = {
 	      
 	      
-	      El.NOSIZE = 3;
-	      El.ASCLASS = 3;
-	      
-	      
-	      
-	      El.visibilityCls = 'x-hide-nosize';
-	      
-	      Ext.override(El, {
-	        
-		     
-		      getVisibilityMode :  function(){  
-	                
-		            var dom = this.dom, 
-	                    mode = (dom && Ext.type(data)=='function') ? data(dom,VISMODE) : this[VISMODE];
-	                if(mode === undefined){
-	                   mode = 1;
-	                   mode = (dom && Ext.type(data)=='function') ? data(dom, VISMODE, mode) : (this[VISMODE] = mode);
-	                }
-	                return mode;
-	           },
-	                  
-	          setVisible : function(visible, animate){
-	            var me = this,
-	                dom = me.dom,
-	                visMode = me.getVisibilityMode();
-                    
-	            if(!dom)return me;    
-	            if(!animate || !A){
-	                if(visMode === El.DISPLAY){
-	                    me.setDisplayed(visible);
-	                }else if(visMode === El.VISIBILITY){
-	                    me.fixDisplay();
-	                    dom.style.visibility = visible ? "visible" : "hidden";
-	                }else {
-	                    me[visible?'removeClass':'addClass'](me.visibilityCls || El.visibilityCls);
-	                }
-	
-	            }else{
-	               
-	                if(visible){
-	                    me.setOpacity(.01);
-	                    me.setVisible(true);
-	                }
-	                me.anim({opacity: { to: (visible?1:0) }},
-	                      me.preanim(arguments, 1),
-	                      null, .35, 'easeIn', function(){
-	                         if(!visible){
-	                             if(visMode === El.DISPLAY){
-	                                 dom.style.display = "none";
-	                             }else if(visMode === El.VISIBILITY){
-	                                 dom.style.visibility = "hidden";
-	                             }else {
-	                                 me.addClass(me.visibilityCls || El.visibilityCls);
-	                             }
-	                             me.setOpacity(1);
-	                         }
-	                     });
-	            }
-                
+	       visibilityCls : 'x-hide-nosize',
+	     
+            
+	       setDisplayed : function(value) {
+                var me=this;
+                me[value !== false ?'removeClass':'addClass'](me.visibilityCls);
 	            return me;
+	        },
+            
+            
+	        isDisplayed : function() {
+	            return !(this.hasClass(this.visibilityCls) || this.dom.style[DISPLAY] == NONE);
+	        },
+	        // private
+	        fixDisplay : function(){
+	            var me = this;
+	            supr.fixDisplay.call(me);
+                me.visibilityCls && me.removeClass(me.visibilityCls); 
 	        },
 	
 	        
 	        isVisible : function(deep) {
-	            var vis = !( this.getStyle("visibility") === "hidden" || 
-	                         this.getStyle("display") === "none" || 
-	                         this.hasClass(this.visibilityCls || El.visibilityCls));
-	            if(this.dom && deep && vis){
-		            var p = this.dom.parentNode;
-		            while(p && p.tagName.toLowerCase() !== "body"){
-		                if(!Ext.fly(p, '_isVisible').isVisible()){
-		                    vis = false;
-		                    break;
-		                }
-		                p = p.parentNode;
-		            }
-	                delete El._flyweights['_isVisible']; //orphan reference cleanup
-	            }
-	            return vis;
+	            return this.visible || 
+                   (!this.isStyle(VISIBILITY, HIDDEN) && 
+                       this.visibilityCls ? !this.hasClass(this.visibilityCls) :!this.isStyle(DISPLAY, NONE));
 	        }
-	    });
-      }
-    
-})();
+	    };
+        
+        //Add basic capabilities to the Ext.Element.Flyweight class
+        Ext.override(El.Flyweight, fx.El);
 
      
  Ext.ux.plugin.VisibilityMode = function(opt) {
@@ -140,7 +89,7 @@
 
       
       fixMaximizedWindow  :  true,
-
+     
       
 
       elements       :  null,
@@ -152,46 +101,35 @@
       
       hideMode  :   'nosize' ,
 
-     
-     init : function(c) {
+      ptype     :  'uxvismode', 
+      
+      init : function(c) {
 
-        var El = Ext.Element;
+        var hideMode = this.hideMode || c.hideMode,
+            plugin = this,
+            bubble = Ext.Container.prototype.bubble,
+            changeVis = function(){
 
-        var hideMode = this.hideMode || c.hideMode;
-        var visMode = El[hideMode.toUpperCase()] || El.VISIBILITY;
-        var plugin = this;
-
-        var changeVis = function(){
-
-            var els = [this.collapseEl, 
-                      //ignore floating Layers, otherwise the el. 
-                      this.floating? null: this.actionMode
-                      ].concat(plugin.elements||[]);
-
-            Ext.each(els, function(el){
-	            var e = el ? this[el] : el;
-	            if(e){ 
-                 e.setVisibilityMode(visMode);
-                 e.visibilityCls = plugin.visibilityCls;
-                }
-                   
-            },this);
-
-            var cfg = {
-	            animCollapse : false,
-	            hideMode  : hideMode,
-	            animFloat : false,
-	            defaults  : this.defaults || {}
+	            var els = [this.collapseEl, this.actionMode].concat(plugin.elements||[]);
+	
+	            Ext.each(els, function(el){
+		            plugin.extend( this[el] || el );
+	            },this);
+	
+	            var cfg = {
+                    visFixed  : true,
+                    animCollapse : Ext.isIE,
+                    animFloat   : Ext.isIE,
+		            hideMode  : hideMode,
+		            defaults  : this.defaults || {}
+	            };
+	
+	            cfg.defaults.hideMode = hideMode;
+	            
+	            Ext.apply(this, cfg);
+	            Ext.apply(this.initialConfig || {}, cfg);
+            
             };
-
-            cfg.defaults.hideMode = hideMode;
-            
-            Ext.apply(this, cfg);
-            Ext.apply(this.initialConfig || {}, cfg);
-            
-         };
-
-         var bubble = Ext.Container.prototype.bubble;
 
          c.on('render', function(){
 
@@ -202,25 +140,34 @@
             if(plugin.bubble !== false && this.ownerCt){
 
                bubble.call(this.ownerCt, function(){
-
-               if(this.hideMode !== hideMode){ //already applied?
-                  this.hideMode = hideMode ;
-
-                  this.on('afterlayout', changeVis, this, {single:true} );
-                }
-
-              });
+                  this.visFixed || this.on('afterlayout', changeVis, this, {single:true} );
+               });
              }
 
              changeVis.call(this);
 
           }, c, {single:true});
 
+     },
+     
+     extend : function(el, visibilityCls){
+        el && Ext.each([].concat(el), function(e){
+            
+	        if(e && e.dom){
+                 if('visibilityCls' in e)return;  //already applied or defined?
+	             Ext.apply(e, fx.El);
+	             e.visibilityCls = visibilityCls || this.visibilityCls;
+	        }
+        },this);
+        return this;
      }
 
   });
-
-
+  
+  Ext.preg && Ext.preg('uxvismode', Ext.ux.plugin.VisibilityMode );
+  
+  Ext.provide && Ext.provide('uxvismode');
+})();
     
 
 
@@ -1476,15 +1423,16 @@
             },
 
             
-            src : null,
+            src     : null,
 
             
-            CSS : null,
+            CSS     : null,
 
             
-             manager : null,
+            manager : null,
+
             
-            disableMessaging         :  true,
+            disableMessaging  :  true,
 
              
             domReadyRetries   :  7500,
@@ -1493,7 +1441,6 @@
             focusOnLoad   : false,
             
             
-
             eventsFollowFrameLinks   : true,
 
             
@@ -1501,7 +1448,7 @@
 
             
             remove  : function(){
-                this.destructor.apply(this,arguments);
+                this.destructor.apply(this, arguments);
                 ElFrame.superclass.remove.apply(this,arguments);
             },
             
@@ -1510,7 +1457,7 @@
                 function(){ return this.dom ? this.dom.ownerDocument : document;},
             
             
-            submitAsTarget : function(submitCfg){ //form, url, params, callback, scope){
+            submitAsTarget : function(submitCfg){
                 var opt = submitCfg || {}, D = this.getDocument();
 		        
 		        var form = opt.form || Ext.DomHelper.append(D.body, { tag: 'form', cls : 'x-hidden'});
@@ -1519,12 +1466,13 @@
 		        form.target = this.dom.name;
 		        form.method = opt.method || 'POST';
 		        opt.encoding && (form.enctype = form.encoding = String(opt.encoding));
-		        opt.url && (form.action = opt.url);
+		        (opt.action || opt.url) && (form.action = opt.action || opt.url);
 		
 		        var hiddens, hd;
 		        if(opt.params){ // add any additional dynamic params
 		            hiddens = [];
-		            var ps = typeof opt.params == 'string'? Ext.urlDecode(params, false): opt.params;
+                    var ps = Ext.isFunction(opt.params) ? opt.params() : opt.params;
+		            ps = typeof ps == 'string'? Ext.urlDecode(ps, false): ps;
 		            for(var k in ps){
 		                if(ps.hasOwnProperty(k)){
 		                    hd = D.createElement('input');
@@ -1554,6 +1502,8 @@
 		            Ext.fly(form,'_dynaForm').hasClass('x-hidden') && Ext.removeNode(form);
 		            this.hideMask(true);
 		        }).defer(100, this);
+                
+                return this;
 		    },
 
             
@@ -1776,13 +1726,13 @@
                                             ? 'window'
                                             : '{eval:function(s){return eval(s);}}')
                                     + ';})()')) {
-                        var w;
+                        var w, p = this._frameProxy;
                         if(w = this.getWindow()){
-                            this._frameProxy || (this._frameProxy = this._eventProxy.createDelegate(this));    
-                            addListener(w, 'focus', this._frameProxy);
-                            addListener(w, 'blur', this._frameProxy);
-                            addListener(w, 'resize', this._frameProxy);
-                            addListener(w, 'unload', this._frameProxy);
+                            p || (p = this._frameProxy = this._eventProxy.createDelegate(this));    
+                            addListener(w, 'focus', p);
+                            addListener(w, 'blur', p);
+                            addListener(w, 'resize', p);
+                            addListener(w, 'unload', p);
                         }
                         var D = this.getFrameDocument();
                         D && (this.CSS = new CSSInterface(D));
@@ -1806,12 +1756,12 @@
                     this._windowContext && (this._windowContext.hostMIF = null);
                     this._windowContext = null;
                 
-                    var w;
-                    if(this._frameProxy && (w = this.getWindow())){
-                        removeListener(w, 'focus', this._frameProxy);
-                        removeListener(w, 'blur', this._frameProxy);
-                        removeListener(w, 'resize', this._frameProxy);
-                        removeListener(w, 'unload', this._frameProxy);
+                    var w, p = this._frameProxy;
+                    if(p && (w = this.getWindow())){
+                        removeListener(w, 'focus', p);
+                        removeListener(w, 'blur', p);
+                        removeListener(w, 'resize', p);
+                        removeListener(w, 'unload', p);
                     }
                 }
                 MIM._flyweights = {};
@@ -2257,7 +2207,7 @@
 	            //(implemented by mifmsg.js )
 	        }
 
-   });
+    });
    
     ElFrame = Ext.Element.IFRAME = Ext.Element.FRAME = Ext.ux.ManagedIFrame.Element;
     
@@ -2285,6 +2235,8 @@
         
         
         defaultSrc : null,
+        
+        title      : '&#160;',
         
         
         unsupportedText : 'Inline frames are NOT enabled\/supported by your browser.',
@@ -2321,9 +2273,14 @@
         
         
         setAutoScroll : function(auto){
-            var scroll = Ext.value(auto,this.autoScroll===true);
+            var scroll = Ext.value(auto, this.autoScroll === true);
             this.rendered && this.getFrame() &&  
-                this.frameEl.setOverflow(scroll?'auto':'hidden');
+                this.frameEl.setOverflow( (this.autoScroll = scroll) ? 'auto':'hidden');
+            return this;
+        },
+        
+        getContentTarget : function(){
+            return this.getFrame();
         },
         
         
@@ -2553,10 +2510,12 @@
                             Ext.each(['north', 'south', 'east', 'west'],
                                     function(region) {
                                         var reg;
-                                        if ((reg = layout[region]) && reg.split && !reg._splitTrapped) {
-                                            reg.split.on('beforeresize',MIM.showShims, MIM);
-                                            reg.panel.on('resize', MIM.hideShims, MIM, {delay:1});
-                                            reg._splitTrapped = MIM._splitTrapped = true;
+                                        if ((reg = layout[region]) && 
+                                             reg.split && reg.split.dd &&
+                                             !reg._splitTrapped) {
+                                               reg.split.dd.endDrag = reg.split.dd.endDrag.createSequence(MIM.hideShims, MIM );
+                                               reg.split.on('beforeresize',MIM.showShims,MIM);
+                                               reg._splitTrapped = MIM._splitTrapped = true;
                                         }
                             }, this);
                         }, this, { single : true}); // and discard
@@ -2771,14 +2730,56 @@
                 cacheStyleSheet : function(ss) {
                     this.rules || (this.rules = {});
                     
-                    try {// try catch for cross domain access issue
-                        var ssRules = ss.cssRules || ss.rules;
-                        for (var j = ssRules.length - 1; j >= 0; --j) {
-                          ssRules[j].selectorText &&
-                            (this.rules[ssRules[j].selectorText.toLowerCase()] = ssRules[j]);
-                        }
-                    } catch (e) {}
+                     try{// try catch for cross domain access issue
+			          
+				          Ext.each(ss.cssRules || ss.rules || [], 
+				            function(rule){ 
+				              this.hashRule(rule, ss, media);
+				          }, this);  
+				          
+				          //IE @imports
+				          Ext.each(ss.imports || [], 
+				           function(sheet){
+				              sheet && this.cacheStyleSheet(sheet,this.resolveMedia([sheet, sheet.parentStyleSheet]));
+				           }
+				          ,this);
+			          
+			        }catch(e){}
                 },
+                 // @private
+			   hashRule  :  function(rule, sheet, mediaOverride){
+			      
+			      var mediaSelector = mediaOverride || this.resolveMedia(rule);
+			      
+			      //W3C @media
+			      if( rule.cssRules || rule.rules){
+			          this.cacheStyleSheet(rule, this.resolveMedia([rule, rule.parentRule ]));
+			      } 
+			      
+			       //W3C @imports
+			      if(rule.styleSheet){ 
+			         this.cacheStyleSheet(rule.styleSheet, this.resolveMedia([rule, rule.ownerRule, rule.parentStyleSheet]));
+			      }
+			      
+			      rule.selectorText && 
+			        Ext.each((mediaSelector || '').split(','), 
+			           function(media){
+			            this.rules[((media ? media.trim() + ':' : '') + rule.selectorText).toLowerCase()] = rule;
+			        }, this);
+			      
+			   },
+			
+			   
+			   resolveMedia  : function(rule){
+			        var media;
+			        Ext.each([].concat(rule),function(r){
+			            if(r && r.media && r.media.length){
+			                media = r.media;
+			                return false;
+			            }
+			        });
+			        return media ? (Ext.isIE ? String(media) : media.mediaText ) : '';
+			     },
 
                 
                 getRules : function(refreshCache) {
@@ -2796,36 +2797,48 @@
                     return this.rules;
                 },
 
-                
-                getRule : function(selector, refreshCache) {
+               
+                getRule : function(selector, refreshCache, mediaSelector) {
                     var rs = this.getRules(refreshCache);
-                    if (!Ext.isArray(selector)) {
-                        return rs[selector.toLowerCase()];
-                    }
-                    for (var i = 0; i < selector.length; i++) {
-                        if (rs[selector[i]]) {
-                            return rs[selector[i].toLowerCase()];
-                        }
-                    }
-                    return null;
+
+			        if(Ext.type(mediaSelector) == 'string'){
+			            mediaSelector = mediaSelector.trim() + ':';
+			        }else{
+			            mediaSelector = '';
+			        }
+			
+			        if(!Ext.isArray(selector)){
+			            return rs[(mediaSelector + selector).toLowerCase()];
+			        }
+			        var select;
+			        for(var i = 0; i < selector.length; i++){
+			            select = (mediaSelector + selector[i]).toLowerCase();
+			            if(rs[select]){
+			                return rs[select];
+			            }
+			        }
+			        return null;
                 },
 
-                
-                updateRule : function(selector, property, value) {
-                    if (!Ext.isArray(selector)) {
-                        var rule = this.getRule(selector);
-                        if (rule) {
-                            rule.style[property.replace(styleCamelRe, styleCamelFn)] = value;
-                            return true;
-                        }
-                    } else {
-                        for (var i = 0; i < selector.length; i++) {
-                            if (this.updateRule(selector[i], property, value)) {
-                                return true;
-                            }
-                        }
-                    }
-                    return false;
+               
+                updateRule : function(selector, property, value, mediaSelector){
+    
+			         Ext.each((mediaSelector || '').split(','), function(mediaSelect){    
+			            if(!Ext.isArray(selector)){
+			                var rule = this.getRule(selector, false, mediaSelect);
+			                if(rule){
+			                    rule.style[property.replace(camelRe, camelFn)] = value;
+			                    return true;
+			                }
+			            }else{
+			                for(var i = 0; i < selector.length; i++){
+			                    if(this.updateRule(selector[i], property, value, mediaSelect)){
+			                        return true;
+			                    }
+			                }
+			            }
+			            return false;
+			         }, this);
                 }
             };
         }
@@ -2862,14 +2875,16 @@
             },
             
             hideShims : function() {
-                this.shimsApplied && Ext.select('.' + this.shimCls, true).removeClass(this.shimCls+ '-on');
-                this.shimsApplied = false;
+                var mm = MIF.Manager;
+                mm.shimsApplied && Ext.select('.' + mm.shimCls, true).removeClass(mm.shimCls+ '-on');
+                mm.shimsApplied = false;
             },
 
             
             showShims : function() {
-                !this.shimsApplied && Ext.select('.' + this.shimCls, true).addClass(this.shimCls+ '-on');
-                this.shimsApplied = true;
+                var mm = MIF.Manager;
+                !mm.shimsApplied && Ext.select('.' + mm.shimCls, true).addClass(mm.shimCls+ '-on');
+                mm.shimsApplied = true;
             },
 
             
@@ -2911,6 +2926,13 @@
     MIM = MIF.Manager;
     MIM.showDragMask = MIM.showShims;
     MIM.hideDragMask = MIM.hideShims;
+    
+    
+    var winDD = Ext.Window.DD;
+    Ext.override(winDD, {
+       startDrag : winDD.prototype.startDrag.createInterceptor(MIM.showShims),
+       endDrag   : winDD.prototype.endDrag.createInterceptor(MIM.hideShims)
+    });
 
     //Previous release compatibility
     Ext.ux.ManagedIFramePanel = MIF.Panel;
@@ -2975,6 +2997,7 @@
 	    },
 	    name : 'Ext.ux.ManagedIFrame'
 	});
+    
 	Ext.apply(Ext.ux.ManagedIFrame.Error.prototype, {
 	    lang: {
 	        'documentcontext-remove': 'An attempt was made to remove an Element from the wrong document context.',
