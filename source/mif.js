@@ -440,7 +440,7 @@
 		        }
 		
 		        opt.callback && 
-                    this._observable.addListener('_docload',opt.callback, opt.scope,{single:true, delay : 200});
+                    this._observable.addListener('_docready',opt.callback, opt.scope,{single:true});
                      
                 this._frameAction = true;
                 this._targetURI = location.href;
@@ -805,7 +805,7 @@
                                     + '").ownerCt)._windowContext='
                                     + (Ext.isIE
                                             ? 'window'
-                                            : '{eval:function(s){return eval(s);}}')
+                                            : '{eval:function(s){return new Function(s)();}}')
                                     + ';})()')) {
                         var w, p = this._frameProxy;
                         if(w = this.getWindow()){
@@ -1114,7 +1114,7 @@
             _onDocReady  : function(eventName ){
                 var w, obv = this._observable, D;
                 //raise internal event regardless of state.
-                obv.fireEvent.call( obv,"_docready", eventName , this._domReady , this._domFired);
+                obv.fireEvent.call( obv,"_docready", this, eventName , this._domReady , this._domFired);
                 
                 (D = this.getDoc()) && (D.isReady = true);
                 if ( !this._domFired && !this._isReset &&
@@ -2330,7 +2330,7 @@
                 },
 
                 // private
-                cacheStyleSheet : function(ss) {
+                cacheStyleSheet : function(ss, media) {
                     this.rules || (this.rules = {});
                     
                      try{// try catch for cross domain access issue
