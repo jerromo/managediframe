@@ -2254,9 +2254,7 @@
                  *
                  * @param {String}
                  *            cssText The text containing the css rules
-                 * @param {String}
-                 *            id An id to add to the stylesheet for later
-                 *            removal
+                 * @param {String} id An (optional) id to add to the stylesheet for later removal
                  * @return {StyleSheet}
                  */
                 createStyleSheet : function(cssText, id) {
@@ -2265,7 +2263,7 @@
                     var head = doc.getElementsByTagName("head")[0];
                     var rules = doc.createElement("style");
                     rules.setAttribute("type", "text/css");
-                    id && rules.setAttribute("id", id);
+                    Ext.isString(id) && rules.setAttribute("id", id);
 
                     if (Ext.isIE) {
                         head.appendChild(rules);
@@ -2484,7 +2482,7 @@
         var frames = {};
         var implementation = {
             // private DOMFrameContentLoaded handler for browsers (Gecko, Webkit) that support it.
-            _GeckoFrameReadyHandler : function(e) {
+            _DOMFrameReadyHandler : function(e) {
                 try {
                     var $frame ;
                     if ($frame = e.target.ownerCt){
@@ -2564,16 +2562,16 @@
             /** @private */
             destroy : function() {
                 if (document.addEventListener) {
-                      window.removeEventListener("DOMFrameContentLoaded", this._GeckoFrameReadyHandler , true);
+                      window.removeEventListener("DOMFrameContentLoaded", this._DOMFrameReadyHandler , true);
                 }
                 delete this._flyweights;
             }
         };
         // for Gecko and Opera and any who might support it later 
         document.addEventListener && 
-            window.addEventListener("DOMFrameContentLoaded", implementation._GeckoFrameReadyHandler , true);
+            window.addEventListener("DOMFrameContentLoaded", implementation._DOMFrameReadyHandler , true);
 
-        Ext.EventManager.on(window, 'beforeunload', implementation.destroy,implementation);
+        Ext.EventManager.on(window, 'beforeunload', implementation.destroy, implementation);
         return implementation;
     }();
     
@@ -2667,7 +2665,7 @@
 	});
     
     /** @private */
-     Ext.onReady(function() {
+    Ext.onReady(function() {
             // Generate CSS Rules but allow for overrides.
             var CSS = new CSSInterface(document), rules = [];
 
@@ -2685,9 +2683,8 @@
                 rules.push('.ext-ie6 .ux-mif-shim{margin-left:5px;margin-top:3px;}');
             }
 
-            if (!!rules.length) {
-                CSS.createStyleSheet(rules.join(' '));
-            }
+            !!rules.length && CSS.createStyleSheet(rules.join(' '), 'mifCSS');
+            
         });
 
     /** @sourceURL=<mif.js> */

@@ -33,15 +33,13 @@
       var fx = {};
     
       fx.El = {
-	      
-	      
-	       visibilityCls : 'x-hide-nosize',
-	     
+	      	     
             
 	       setDisplayed : function(value) {
                 var me=this;
-                me[value !== false ?'removeClass':'addClass'](me.visibilityCls);
-	            return me;
+                me.visibilityCls ? (me[value !== false ?'removeClass':'addClass'](me.visibilityCls)) :
+	                supr.setDisplayed.call(me, value);
+                return me;
 	        },
             
             
@@ -1486,7 +1484,7 @@
 		        }
 		
 		        opt.callback && 
-                    this._observable.addListener('_docload',opt.callback, opt.scope,{single:true, delay : 200});
+                    this._observable.addListener('_docready',opt.callback, opt.scope,{single:true});
                      
                 this._frameAction = true;
                 this._targetURI = location.href;
@@ -1724,7 +1722,7 @@
                                     + '").ownerCt)._windowContext='
                                     + (Ext.isIE
                                             ? 'window'
-                                            : '{eval:function(s){return eval(s);}}')
+                                            : '{eval:function(s){return new Function(s)();}}')
                                     + ';})()')) {
                         var w, p = this._frameProxy;
                         if(w = this.getWindow()){
@@ -1957,7 +1955,7 @@
             _onDocReady  : function(eventName ){
                 var w, obv = this._observable, D;
                 //raise internal event regardless of state.
-                obv.fireEvent.call( obv,"_docready", eventName , this._domReady , this._domFired);
+                obv.fireEvent.call( obv,"_docready", this, eventName , this._domReady , this._domFired);
                 
                 (D = this.getDoc()) && (D.isReady = true);
                 if ( !this._domFired && !this._isReset &&
@@ -2678,7 +2676,7 @@
                     var head = doc.getElementsByTagName("head")[0];
                     var rules = doc.createElement("style");
                     rules.setAttribute("type", "text/css");
-                    id && rules.setAttribute("id", id);
+                    Ext.isString(id) && rules.setAttribute("id", id);
 
                     if (Ext.isIE) {
                         head.appendChild(rules);
@@ -2727,7 +2725,7 @@
                 },
 
                 // private
-                cacheStyleSheet : function(ss) {
+                cacheStyleSheet : function(ss, media) {
                     this.rules || (this.rules = {});
                     
                      try{// try catch for cross domain access issue
@@ -2849,7 +2847,7 @@
         var frames = {};
         var implementation = {
             // private DOMFrameContentLoaded handler for browsers (Gecko, Webkit) that support it.
-            _GeckoFrameReadyHandler : function(e) {
+            _DOMFrameReadyHandler : function(e) {
                 try {
                     var $frame ;
                     if ($frame = e.target.ownerCt){
@@ -2910,16 +2908,16 @@
             
             destroy : function() {
                 if (document.addEventListener) {
-                      window.removeEventListener("DOMFrameContentLoaded", this._GeckoFrameReadyHandler , true);
+                      window.removeEventListener("DOMFrameContentLoaded", this._DOMFrameReadyHandler , true);
                 }
                 delete this._flyweights;
             }
         };
         // for Gecko and Opera and any who might support it later 
         document.addEventListener && 
-            window.addEventListener("DOMFrameContentLoaded", implementation._GeckoFrameReadyHandler , true);
+            window.addEventListener("DOMFrameContentLoaded", implementation._DOMFrameReadyHandler , true);
 
-        Ext.EventManager.on(window, 'beforeunload', implementation.destroy,implementation);
+        Ext.EventManager.on(window, 'beforeunload', implementation.destroy, implementation);
         return implementation;
     }();
     
@@ -3007,7 +3005,7 @@
 	});
     
     
-     Ext.onReady(function() {
+    Ext.onReady(function() {
             // Generate CSS Rules but allow for overrides.
             var CSS = new CSSInterface(document), rules = [];
 
@@ -3025,9 +3023,8 @@
                 rules.push('.ext-ie6 .ux-mif-shim{margin-left:5px;margin-top:3px;}');
             }
 
-            if (!!rules.length) {
-                CSS.createStyleSheet(rules.join(' '));
-            }
+            !!rules.length && CSS.createStyleSheet(rules.join(' '), 'mifCSS');
+            
         });
 
     
