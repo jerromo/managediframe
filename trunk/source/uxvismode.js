@@ -29,15 +29,7 @@
       var fx = {};
     
       fx.El = {
-	      
-	      /**
-	       * Visibility class - Designed to set an Elements width and height to zero (or other CSS rule)
-	       * @static
-	       * @type String
-	       * @default 'x-hide-nosize'
-	       */
-	       visibilityCls : 'x-hide-nosize',
-	     
+	      	     
             /**
 	         * Sets the CSS display property. Uses originalDisplay if the specified value is a boolean true.
 	         * @param {Mixed} value Boolean value to display the element using its default display, or a string to set the display directly.
@@ -45,8 +37,9 @@
 	         */
 	       setDisplayed : function(value) {
                 var me=this;
-                me[value !== false ?'removeClass':'addClass'](me.visibilityCls);
-	            return me;
+                me.visibilityCls ? (me[value !== false ?'removeClass':'addClass'](me.visibilityCls)) :
+	                supr.setDisplayed.call(me, value);
+                return me;
 	        },
             
             /**
