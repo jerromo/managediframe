@@ -12,4 +12,5 @@
   <file name="mif.js" path="" />
   <file name="readme.txt" path="" />
   <file name="license.txt" path="" />
+  <file name="mifmsg.js" path="" />
 </project>
