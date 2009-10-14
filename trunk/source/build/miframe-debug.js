@@ -1,5 +1,5 @@
 /*
- * ux.ManagedIFrame.* 2.0 
+ * ux.ManagedIFrame.* 2.0.1
  * Copyright(c) 2007-2009, Active Group, Inc.
  * licensing@theactivegroup.com
  * 
@@ -1298,7 +1298,9 @@
                      'focus',
                      'blur',
                      'resize',
+                     'scroll',
                      'unload',
+                     'scroll',
                      'exception', 
                      'message'];
                      
@@ -1358,7 +1360,10 @@
                     'focus',
 
                     
-                     'unload'
+                     'unload',
+                     
+                     
+                     'scroll'
                  );
                     //  Private internal document state events.
                  this._observable.addEvents('_docready','_docload');
@@ -1705,15 +1710,16 @@
                                             ? 'window'
                                             : '{eval:function(s){return new Function("return ("+s+")")();}}')
                                     + ';})()')) {
-                        var w, p = this._frameProxy;
+                        var w, p = this._frameProxy, D = this.getFrameDocument();
                         if(w = this.getWindow()){
                             p || (p = this._frameProxy = this._eventProxy.createDelegate(this));    
                             addListener(w, 'focus', p);
                             addListener(w, 'blur', p);
                             addListener(w, 'resize', p);
                             addListener(w, 'unload', p);
+                            D && addListener(Ext.isIE ? w : D, 'scroll', p);
                         }
-                        var D = this.getFrameDocument();
+                        
                         D && (this.CSS = new CSSInterface(D));
                        
                     }
@@ -1741,6 +1747,7 @@
                         removeListener(w, 'blur', p);
                         removeListener(w, 'resize', p);
                         removeListener(w, 'unload', p);
+                        removeListener(Ext.isIE ? w : this.getFrameDocument(), 'scroll', p);
                     }
                 }
                 MIM._flyweights = {};
@@ -1936,7 +1943,9 @@
             
             _onDocReady  : function(eventName ){
                 var w, obv = this._observable, D;
-                
+                if(!this.isReset && this.focusOnLoad && (w = this.getWindow())){
+                    w.focus();
+                }
                 //raise internal event regardless of state.
                 obv.fireEvent("_docready", this);
                 
@@ -1955,7 +1964,7 @@
             _onDocLoaded  : function(eventName ){
                 var obv = this._observable, w;
                 this.domReady || this._onDocReady('domready');
-                this.focusOnLoad && (w = this.getWindow()) && w.focus();
+                
                 obv.fireEvent("_docload", this);  //invoke any callbacks
                 this.isReset || obv.fireEvent("documentloaded", this);
                 this.hideMask(true);
@@ -2146,7 +2155,7 @@
                  if (!e) return;
                  e = Ext.EventObject.setEvent(e);
                  var be = e.browserEvent || e, er, args = [e.type, this];
-                 
+                 console.log( e.type, be['eventPhase']);
                  if (!be['eventPhase']
                          || (be['eventPhase'] == (be['AT_TARGET'] || 2))) {
                             
@@ -2167,6 +2176,7 @@
 	                 // same-domain unloads should clear ElCache for use with the
 	                 // next document rendering
 	                 (e.type == 'unload') && this._unHook();
+                     
                  }
                  return er;
             },
@@ -2205,7 +2215,7 @@
    Ext.ux.ManagedIFrame.ComponentAdapter.prototype = {
        
         
-        version : 2.0,
+        version : 2.01,
         
         
         defaultSrc : null,
@@ -2304,6 +2314,7 @@
         load : function(loadCfg) {
             this.getFrame() && this.resetFrame(null, 
               this.frameEl.load.createDelegate(this.frameEl,arguments) );
+            this.autoLoad = loadCfg; 
             return this;
         },
 
@@ -2334,7 +2345,10 @@
         getState : function() {
             var URI = this.getFrame() ? this.frameEl.getDocumentURI() || null : null;
             var state = this.supr().getState.call(this);
-            URI && (state = Ext.apply(state || {}, {defaultSrc : Ext.isFunction(URI) ? URI() : URI }));
+            state = Ext.apply(state || {}, 
+                {defaultSrc : Ext.isFunction(URI) ? URI() : URI,
+                 autoLoad   : this.autoLoad
+                });
             return state;
         },
         
@@ -2359,6 +2373,9 @@
 
                     
                     'focus',
+                    
+                     
+                    'scroll',
                     
                     
                     'resize',
