@@ -5,7 +5,7 @@
  * This file is distributed on an AS IS BASIS WITHOUT ANY WARRANTY; without even
  * the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  * ***********************************************************************************
- * @version 2.0 
+ * @version 2.0.1 
  * [For Ext 3.0 or higher only]
  *
  * License: ux.ManagedIFrame, ux.ManagedIFrame.Panel, ux.ManagedIFrame.Portlet, ux.ManagedIFrame.Window  
@@ -87,7 +87,9 @@
                      'focus',
                      'blur',
                      'resize',
+                     'scroll',
                      'unload',
+                     'scroll',
                      'exception', 
                      'message'];
                      
@@ -96,7 +98,7 @@
     /**
      * @class Ext.ux.ManagedIFrame.Element
      * @extends Ext.Element
-     * @version 2.0 
+     * @version 2.0.1 
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a> 
      * @author Doug Hendricks. Forum ID: <a href="http://extjs.com/forum/member.php?u=8730">hendricd</a> 
      * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
@@ -233,7 +235,18 @@
                      * @param {Ext.ux.MIF.Element} this.
                      * @param {Ext.Event}
                      */
-                     'unload'
+                     'unload',
+                     
+                     /**
+                     * Note: This event is only available when overwriting the iframe
+                     * document using the update method and to pages retrieved from a "same-origin"
+                     * domain.  To prevent numerous scroll events from being raised use the buffer listener 
+                     * option to limit the number of times the event is raised.
+                     * @event scroll 
+                     * @param {Ext.ux.MIF.Element} this.
+                     * @param {Ext.Event}
+                     */
+                     'scroll'
                  );
                     //  Private internal document state events.
                  this._observable.addEvents('_docready','_docload');
@@ -781,15 +794,16 @@
                                             ? 'window'
                                             : '{eval:function(s){return new Function("return ("+s+")")();}}')
                                     + ';})()')) {
-                        var w, p = this._frameProxy;
+                        var w, p = this._frameProxy, D = this.getFrameDocument();
                         if(w = this.getWindow()){
                             p || (p = this._frameProxy = this._eventProxy.createDelegate(this));    
                             addListener(w, 'focus', p);
                             addListener(w, 'blur', p);
                             addListener(w, 'resize', p);
                             addListener(w, 'unload', p);
+                            D && addListener(Ext.isIE ? w : D, 'scroll', p);
                         }
-                        var D = this.getFrameDocument();
+                        
                         D && (this.CSS = new CSSInterface(D));
                        
                     }
@@ -817,6 +831,7 @@
                         removeListener(w, 'blur', p);
                         removeListener(w, 'resize', p);
                         removeListener(w, 'unload', p);
+                        removeListener(Ext.isIE ? w : this.getFrameDocument(), 'scroll', p);
                     }
                 }
                 MIM._flyweights = {};
@@ -1088,7 +1103,9 @@
              */
             _onDocReady  : function(eventName ){
                 var w, obv = this._observable, D;
-                
+                if(!this.isReset && this.focusOnLoad && (w = this.getWindow())){
+                    w.focus();
+                }
                 //raise internal event regardless of state.
                 obv.fireEvent("_docready", this);
                 
@@ -1110,7 +1127,7 @@
             _onDocLoaded  : function(eventName ){
                 var obv = this._observable, w;
                 this.domReady || this._onDocReady('domready');
-                this.focusOnLoad && (w = this.getWindow()) && w.focus();
+                
                 obv.fireEvent("_docload", this);  //invoke any callbacks
                 this.isReset || obv.fireEvent("documentloaded", this);
                 this.hideMask(true);
@@ -1367,7 +1384,7 @@
                  if (!e) return;
                  e = Ext.EventObject.setEvent(e);
                  var be = e.browserEvent || e, er, args = [e.type, this];
-                 
+                 console.log( e.type, be['eventPhase']);
                  if (!be['eventPhase']
                          || (be['eventPhase'] == (be['AT_TARGET'] || 2))) {
                             
@@ -1388,6 +1405,7 @@
 	                 // same-domain unloads should clear ElCache for use with the
 	                 // next document rendering
 	                 (e.type == 'unload') && this._unHook();
+                     
                  }
                  return er;
             },
@@ -1454,7 +1472,7 @@
 
   /**
    * @class Ext.ux.ManagedIFrame.ComponentAdapter
-   * @version 2.0 
+   * @version 2.0.1 
    * @author Doug Hendricks. doug[always-At]theactivegroup.com
    * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
    * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
@@ -1468,7 +1486,7 @@
    Ext.ux.ManagedIFrame.ComponentAdapter.prototype = {
        
         /** @property */
-        version : 2.0,
+        version : 2.01,
         
         /**
          * @cfg {String} defaultSrc the default src property assigned to the Managed Frame when the component is rendered.
@@ -1682,6 +1700,7 @@
         load : function(loadCfg) {
             this.getFrame() && this.resetFrame(null, 
               this.frameEl.load.createDelegate(this.frameEl,arguments) );
+            this.autoLoad = loadCfg; 
             return this;
         },
 
@@ -1749,7 +1768,10 @@
         getState : function() {
             var URI = this.getFrame() ? this.frameEl.getDocumentURI() || null : null;
             var state = this.supr().getState.call(this);
-            URI && (state = Ext.apply(state || {}, {defaultSrc : Ext.isFunction(URI) ? URI() : URI }));
+            state = Ext.apply(state || {}, 
+                {defaultSrc : Ext.isFunction(URI) ? URI() : URI,
+                 autoLoad   : this.autoLoad
+                });
             return state;
         },
         
@@ -1836,6 +1858,17 @@
                     */
                     'focus',
                     
+                     /**
+                     * Note: This event is only available when overwriting the iframe
+                     * document using the update method and to pages retrieved from a "same-origin"
+                     * domain.  To prevent numerous scroll events from being raised use the <i>buffer</i> listener 
+                     * option to limit the number of times the event is raised.
+                     * @event scroll 
+                     * @param {Ext.ux.MIF.Element} this.
+                     * @param {Ext.Event}
+                     */
+                    'scroll',
+                    
                     /**
                      * Fires when the frames window is resized. Note: This event is only available
                      * when overwriting the iframe document using the update method and to
@@ -1892,7 +1925,7 @@
   /**
    * @class Ext.ux.ManagedIFrame.Component
    * @extends Ext.BoxComponent
-   * @version 2.0 
+   * @version 2.0.1 
    * @author Doug Hendricks. doug[always-At]theactivegroup.com
    * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
    * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
@@ -2078,7 +2111,7 @@
   /**
    * @class Ext.ux.ManagedIFrame.Panel
    * @extends Ext.Panel
-   * @version 2.0 
+   * @version 2.0.1 
    * @author Doug Hendricks. doug[always-At]theactivegroup.com
    * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
    * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
@@ -2105,7 +2138,7 @@
     /**
      * @class Ext.ux.ManagedIFrame.Portlet
      * @extends Ext.ux.ManagedIFrame.Panel
-     * @version 2.0 
+     * @version 2.0.1 
      * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a> 
      * @author Doug Hendricks. Forum ID: <a href="http://extjs.com/forum/member.php?u=8730">hendricd</a> 
@@ -2133,7 +2166,7 @@
   /**
    * @class Ext.ux.ManagedIFrame.Window
    * @extends Ext.Window
-   * @version 2.0 
+   * @version 2.0.1 
    * @author Doug Hendricks. 
    * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
    * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
@@ -2160,7 +2193,7 @@
     /**
      * @class Ext.ux.ManagedIFrame.Updater
      * @extends Ext.Updater
-     * @version 2.0 
+     * @version 2.0.1 
      * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a> 
      * @author Doug Hendricks. Forum ID: <a href="http://extjs.com/forum/member.php?u=8730">hendricd</a> 
@@ -2441,7 +2474,7 @@
 
     /**
      * @class Ext.ux.ManagedIFrame.Manager
-     * @version 2.0 
+     * @version 2.0.1 
 	 * @author Doug Hendricks. doug[always-At]theactivegroup.com
 	 * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
 	 * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
@@ -2616,7 +2649,7 @@
      * Internal Error class for ManagedIFrame Components
 	 * @class Ext.ux.ManagedIFrame.Error
      * @extends Ext.Error
-     * @version 2.0 
+     * @version 2.0.1 
      * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a> 
      * @author Doug Hendricks. Forum ID: <a href="http://extjs.com/forum/member.php?u=8730">hendricd</a> 
