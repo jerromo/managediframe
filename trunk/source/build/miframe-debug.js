@@ -1445,7 +1445,7 @@
 		        form = Ext.getDom(form.form || form, D);
 		
 		        form.target = this.dom.name;
-		        form.method = opt.method || 'POST';
+		        opt.method && (form.method = opt.method);
 		        opt.encoding && (form.enctype = form.encoding = String(opt.encoding));
 		        (opt.action || opt.url) && (form.action = opt.action || opt.url);
 		
@@ -2526,15 +2526,24 @@
                     this.getUpdater().showLoadIndicator = this.showLoadIndicator || false;
                     
                     //Resume Parent containers' events 
-                    this.relayTarget && this.ownerCt && this.ownerCt.resumeEvents();
+                    var resumeEvents = this.relayTarget && this.ownerCt ? 
+                       this.ownerCt.resumeEvents.createDelegate(this.ownerCt) : null;
+                       
                     if(this.autoload){
                        this.doAutoLoad();
                     } else if(this.html) {
                        F.update(this.html);
                        delete this.html;
                     }else{
-                       this.defaultSrc ? F.setSrc(this.defaultSrc, false) : F.reset();
+                       
+                        if(this.defaultSrc){
+                            F.setSrc(this.defaultSrc, false);
+                        }else{
+                             
+                            return F.reset(null, resumeEvents);
+                        }
                     }
+                    resumeEvents && resumeEvents();
                 }
             },
             
