@@ -1914,7 +1914,31 @@
         //Suspend (and queue) host container events until the child MIF.Component is rendered.
         onAdd : function(C){
              C.relayTarget && this.suspendEvents(true); 
-        }
+        },
+        
+        initRef: function() {
+      
+	        if(this.ref){
+	            var t = this,
+	                levels = this.ref.split('/'),
+	                l = levels.length,
+	                i;
+	            for (i = 0; i < l; i++) {
+	                if(t.ownerCt){
+	                    t = t.ownerCt;
+	                }
+	            }
+	            this.refName = levels[--i];
+	            t[this.refName] || (t[this.refName] = this);
+	            /**
+	             * @type Ext.Container
+	             * @property refOwner
+	             * The ancestor Container into which the {@link #ref} reference was inserted if this Component
+	             * is a child of a Container, and has been configured with a <code>ref</code>.
+	             */
+	            this.refOwner = t;
+	        }
+	    }
       
    };
    
