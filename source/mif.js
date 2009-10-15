@@ -387,7 +387,7 @@
 	         *         params: {param1: &quot;foo&quot;, param2: &quot;bar&quot;}, // or URL encoded string or function that returns either
 	         *         callback: yourFunction,  //optional, called with the signature (frame)
 	         *         scope: yourObject, // optional scope for the callback
-	         *         method: 'POST', //optional form.action (default:'POST')
+	         *         method: 'POST', //optional form.method 
              *         encoding : "multipart/form-data" //optional, default = HTMLForm default  
 	         *      });
 	         *
@@ -402,7 +402,7 @@
 		        form = Ext.getDom(form.form || form, D);
 		
 		        form.target = this.dom.name;
-		        form.method = opt.method || 'POST';
+		        opt.method && (form.method = opt.method);
 		        opt.encoding && (form.enctype = form.encoding = String(opt.encoding));
 		        (opt.action || opt.url) && (form.action = opt.action || opt.url);
 		
@@ -488,8 +488,8 @@
             },
 
             /**
-             * Sets the embedded Iframe location using its replace method. Note: invoke the function with
-             * no arguments to refresh the iframe based on the current src value.
+             * Sets the embedded Iframe location using its replace method (precluding a history update). 
+             * Note: invoke the function with no arguments to refresh the iframe based on the current src value.
              *
              * @param {String/Function} url (Optional) A string or reference to a Function that
              *            returns a URI string when called
@@ -2071,15 +2071,26 @@
                     this.getUpdater().showLoadIndicator = this.showLoadIndicator || false;
                     
                     //Resume Parent containers' events 
-                    this.relayTarget && this.ownerCt && this.ownerCt.resumeEvents();
+                    var resumeEvents = this.relayTarget && this.ownerCt ? 
+                       this.ownerCt.resumeEvents.createDelegate(this.ownerCt) : null;
+                       
                     if(this.autoload){
                        this.doAutoLoad();
                     } else if(this.html) {
                        F.update(this.html);
                        delete this.html;
                     }else{
-                       this.defaultSrc ? F.setSrc(this.defaultSrc, false) : F.reset();
+                       
+                        if(this.defaultSrc){
+                            F.setSrc(this.defaultSrc, false);
+                        }else{
+                            /* If this is a no-action frame, reset it first, then resume parent events
+                             * allowing access to a fully reset frame by upstream afterrender/layout events
+                             */ 
+                            return F.reset(null, resumeEvents);
+                        }
                     }
+                    resumeEvents && resumeEvents();
                 }
             },
             
