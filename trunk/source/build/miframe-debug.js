@@ -2155,7 +2155,7 @@
                  if (!e) return;
                  e = Ext.EventObject.setEvent(e);
                  var be = e.browserEvent || e, er, args = [e.type, this];
-                 console.log( e.type, be['eventPhase']);
+                 
                  if (!be['eventPhase']
                          || (be['eventPhase'] == (be['AT_TARGET'] || 2))) {
                             
