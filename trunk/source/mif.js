@@ -2027,6 +2027,7 @@
                         (this.relayTarget || this).relayEvents(F._observable, frameEvents.concat(this._msgTagHandlers || []));
                     delete this.contentEl;
                  }
+                 
             },
             
             /** @private */
@@ -2039,6 +2040,8 @@
                             || this.getEl().parent()).getViewSize();
                     this.setSize(size.width - pos[0], size.height - pos[1]);
                 }
+
+                this.getEl().setOverflow('hidden'); //disable competing scrollers
                 this.setAutoScroll();
                 var F;
                /* Enable auto-Shims if the Component participates in (nested?)
