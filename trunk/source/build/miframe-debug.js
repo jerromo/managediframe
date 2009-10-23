@@ -1309,9 +1309,7 @@
     
      
     Ext.ux.ManagedIFrame.Element = Ext.extend(Ext.Element, {
-             
-            cls   :  'ux-mif',
-             
+                         
             constructor : function(element, forceNew, doc ){
                 var d = doc || document;
                 var elCache  = ELD.resolveCache ? ELD.resolveCache(d)._elCache : El.cache ;
@@ -1328,10 +1326,15 @@
                 }
                 
                 this.dom = dom;
-                this.cls && this.addClass(this.cls);
+
                 
                  this.id = id || Ext.id(dom);
                  this.dom.name || (this.dom.name = this.id);
+                 
+                 if(Ext.isIE){
+                     document.frames[this.dom.name] || (document.frames[this.dom.name]= this.dom); 
+                     document.frames[this.id].name = this.dom.name;
+                 }
                  this.dom.ownerCt = this;
                  MIM.register(this);
 
@@ -1439,31 +1442,51 @@
             
             
             submitAsTarget : function(submitCfg){
-                var opt = submitCfg || {}, D = this.getDocument();
-		        
-		        var form = opt.form || Ext.DomHelper.append(D.body, { tag: 'form', cls : 'x-hidden'});
-		        form = Ext.getDom(form.form || form, D);
-		
-		        form.target = this.dom.name;
-		        opt.method && (form.method = opt.method);
-		        opt.encoding && (form.enctype = form.encoding = String(opt.encoding));
-		        (opt.action || opt.url) && (form.action = opt.action || opt.url);
-		
-		        var hiddens, hd;
-		        if(opt.params){ // add any additional dynamic params
+                var opt = submitCfg || {}, 
+                D = this.getDocument(),
+  	            form = Ext.getDom(
+                       opt.form ? opt.form.form || opt.form: null, 
+                    D) || Ext.DomHelper.append(D.body, { 
+                    tag: 'form', 
+                    cls : 'x-hidden x-mif-form',
+                    encoding : 'multipart/form-data'
+                  }),
+                formState = {
+                    target: form.target || '',
+                    method: form.method || '',
+                    encoding: form.encoding || '',
+                    enctype: form.enctype || '',
+                    action: form.action || '' 
+                 },
+                encoding = opt.encoding || form.encoding,
+                method = opt.method || form.method || 'POST';
+        
+                Ext.fly(form, D).set({
+                   target  : this.dom.name,
+                   method  : method,
+                   encoding: encoding,
+                   action  : opt.url || opt.action || form.action
+                });
+                
+                if(method == 'POST' || !!opt.enctype){
+                    Ext.fly(form, D).set({enctype : opt.enctype || form.enctype || encoding});
+                }
+                
+		        var hiddens, hd, ps;
+                // add any additional dynamic params
+		        if(opt.params && (ps = Ext.isFunction(opt.params) ? opt.params() : opt.params)){ 
 		            hiddens = [];
-                    var ps = Ext.isFunction(opt.params) ? opt.params() : opt.params;
-		            ps = typeof ps == 'string'? Ext.urlDecode(ps, false): ps;
-		            for(var k in ps){
-		                if(ps.hasOwnProperty(k)){
-		                    hd = D.createElement('input');
-		                    hd.type = 'hidden';
-		                    hd.name = k;
-		                    hd.value = ps[k];
+                     
+		            Ext.iterate(ps = typeof ps == 'string'? Ext.urlDecode(ps, false): ps, 
+                        function(n, v){
+		                    Ext.fly(hd = D.createElement('input')).set({
+		                     type : 'hidden',
+		                     name : n,
+		                     value: v
+                            });
 		                    form.appendChild(hd);
 		                    hiddens.push(hd);
-		                }
-		            }
+		                });
 		        }
 		
 		        opt.callback && 
@@ -1475,12 +1498,18 @@
 		        
 		        //slight delay for masking
 		        (function(){
+                    
 		            form.submit();
                     // remove dynamic inputs
 		            hiddens && Ext.each(hiddens, Ext.removeNode, Ext);
 
-                    //Remove if dynamically generated.
-		            Ext.fly(form,'_dynaForm').hasClass('x-hidden') && Ext.removeNode(form);
+                    //Remove if dynamically generated, restore state otherwise
+                    var ff = Ext.fly(form, '_dynaForm');
+		            if(ff.hasClass('x-mif-form')){
+                        ff.remove();
+                    }else{
+                        ff.set(formState);
+                    }
 		            this.hideMask(true);
 		        }).defer(100, this);
                 
@@ -1548,13 +1577,14 @@
                 
                 if(win){
                     this.isReset= true;
+                    var cb = callback;
 	                this._observable.addListener('_docload',
 	                  function(frame) {
 	                    if(this.loadMask){
 	                        this.loadMask.disabled = loadMaskOff;
 	                    };
                         
-	                    Ext.isFunction(callback) &&  callback.apply(scope || this, arguments);
+	                    Ext.isFunction(cb) &&  (cb = cb.apply(scope || this, arguments));
 	                }, this, {single:true});
 	            
                     Ext.isFunction(s) && ( s = src());
@@ -2468,6 +2498,7 @@
                 var F;
                 if( F = this.frameEl = (!!frame ? new MIF.Element(frame, true): null)){
                     (F.ownerCt = (this.relayTarget || this)).frameEl = F;
+                    F.addClass(['ux-mif', 'ux-mif-fill']);
                     if (this.loadMask) {
                         //resolve possible maskEl by Element name eg. 'body', 'bwrap', 'actionEl'
                         var mEl = this.loadMask.maskEl || 'x-panel-bwrap';
@@ -3019,7 +3050,7 @@
             // Generate CSS Rules but allow for overrides.
             var CSS = new CSSInterface(document), rules = [];
 
-            CSS.getRule('.ux-mif')|| (rules.push('.ux-mif{height:100%;width:100%;}'));
+            CSS.getRule('.ux-mif-fill')|| (rules.push('.ux-mif-fill{height:100%;width:100%;}'));
             CSS.getRule('.ux-mif-mask-target')|| (rules.push('.ux-mif-mask-target{position:relative;zoom:1;}'));
             CSS.getRule('.ux-mif-el-mask')|| (rules.push(
               '.ux-mif-el-mask {z-index: 100;position: absolute;top:0;left:0;-moz-opacity: 0.5;opacity: .50;*filter: alpha(opacity=50);width: 100%;height: 100%;zoom: 1;} ',
