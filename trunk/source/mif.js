@@ -139,9 +139,9 @@
                  this.dom.name || (this.dom.name = this.id);
                  
                  if(Ext.isIE){
-                     document.frames[this.dom.name] || (document.frames[this.dom.name]= this.dom); 
-                     document.frames[this.id].name = this.dom.name;
+                     document.frames[this.dom.name] || (document.frames[this.dom.name].name = this.dom);
                  }
+                 
                  this.dom.ownerCt = this;
                  MIM.register(this);
 
@@ -587,8 +587,8 @@
 	                    if(this.loadMask){
 	                        this.loadMask.disabled = loadMaskOff;
 	                    };
-                        
 	                    Ext.isFunction(cb) &&  (cb = cb.apply(scope || this, arguments));
+                        
 	                }, this, {single:true});
 	            
                     Ext.isFunction(s) && ( s = src());
@@ -837,7 +837,7 @@
                         D && (this.CSS = new CSSInterface(D));
                        
                     }
-                } catch (ex) { }
+                } catch (ex) {}
                 return this.domWritable();
             },
             
@@ -868,7 +868,7 @@
                 this._domCache = null;
                 ELD.clearCache && ELD.clearCache(this.id);
                 this.CSS = this.CSS ? this.CSS.destroy() : null;
-                this.domFired = this._frameAction = this.isReset = this.domReady = this._hooked = false;
+                this.domFired = this._frameAction = this.domReady = this._hooked = false;
             },
             
             /** @private */
@@ -885,13 +885,15 @@
                 try {
                     doc = (Ext.isIE && win ? win.document : null)
                             || this.dom.contentDocument
-                            || window.frames[this.id].document || null;
+                            || window.frames[this.dom.name].document || null;
                 } catch (gdEx) {
                     this._domCache = null;
+                    
                     ELD.clearCache && ELD.clearCache(this.id);
                     return false; // signifies probable access restriction
                 }
-                doc = (doc && Ext.isFunction(ELD.getDocument)) ? ELD.getDocument(doc,true) : doc;                 
+                doc = (doc && Ext.isFunction(ELD.getDocument)) ? ELD.getDocument(doc,true) : doc;
+                
                 if(doc){
                   this._domCache || (this._domCache = ELD.resolveCache ? 
                 
@@ -901,6 +903,7 @@
                            '$_doc': Ext.get(doc,doc)
                     });
                 }
+                
                 return doc;
             },
 
@@ -1105,9 +1108,9 @@
              */
             loadHandler : function(e, target) {
                 var rstatus = (e && typeof e.type !== 'undefined' ? e.type: this.dom.readyState);
-
+                //console.log('lh', rstatus, this.isReset, this._frameAction, this.domReady, this.domFired, this.eventsFollowFrameLinks);
                 if (this.eventsFollowFrameLinks || this._frameAction || this.isReset ) {
-                //console.log('lh', rstatus, this._frameAction, this.domReady, this.domFired, this.isReset, e.eventPhase);                    
+                                    
 	                switch (rstatus) {
 	                    case 'domready' : // MIF
                         case 'DOMFrameContentLoaded' :
@@ -1140,12 +1143,16 @@
                 obv.fireEvent("_docready", this);
                 
                 (D = this.getDoc()) && (D.isReady = true);
+                
+                
+                
                 if ( !this.domFired && 
                      (this._hooked = this._renderHook())) {
                         // Only raise if sandBox injection succeeded (same origin)
                         this.domFired = true;
                         this.isReset || obv.fireEvent.call(obv, 'domready', this);
                 }
+                
                 this.domReady = true;
                 this.hideMask();
             },
@@ -2677,7 +2684,7 @@
                     config.autoCreate.parent || Ext.getBody(), Ext.apply({
                         tag : 'iframe',
                         frameborder : 0,
-                        cls : MIF.Element.prototype.cls,
+                        cls : 'x-mif',
                         src : (Ext.isIE && Ext.isSecure)? Ext.SSL_SECURE_URL: 'about:blank'
                     }, config.autoCreate)))
                     : null;
