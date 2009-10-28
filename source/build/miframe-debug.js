@@ -1302,7 +1302,8 @@
                      'unload',
                      'scroll',
                      'exception', 
-                     'message'];
+                     'message',
+                     'reset'];
                      
     var reSynthEvents = new RegExp('^('+frameEvents.join('|')+ ')', 'i');
 
@@ -1366,7 +1367,10 @@
                      'unload',
                      
                      
-                     'scroll'
+                     'scroll',
+                     
+                    
+                    'reset'
                  );
                     //  Private internal document state events.
                  this._observable.addEvents('_docready','_docload');
@@ -1584,7 +1588,7 @@
 	                        this.loadMask.disabled = loadMaskOff;
 	                    };
 	                    Ext.isFunction(cb) &&  (cb = cb.apply(scope || this, arguments));
-                        
+                        this._observable.fireEvent("reset", this);
 	                }, this, {single:true});
 	            
                     Ext.isFunction(s) && ( s = src());
@@ -1751,7 +1755,7 @@
                             D && addListener(Ext.isIE ? w : D, 'scroll', p);
                         }
                         
-                        D && (this.CSS = new CSSInterface(D));
+                        D && (this.CSS = new Ext.ux.ManagedIFrame.CSS(D));
                        
                     }
                 } catch (ex) {}
@@ -2282,6 +2286,9 @@
         
         autoScroll: true,
         
+         
+        autoLoad: null,
+        
         
         getId : function(){
              return this.id   || (this.id = "mif-comp-" + (++Ext.Component.AUTO_ID));
@@ -2423,7 +2430,10 @@
                     'resize',
                     
                     
-                    'unload'
+                    'unload',
+                    
+                    
+                    'reset'
                 );
         },
         
@@ -2719,7 +2729,8 @@
         return a.charAt(1).toUpperCase();
     };
     
-    var CSSInterface = function(hostDocument) {
+    
+    Ext.ux.ManagedIFrame.CSS = function(hostDocument) {
         var doc;
         if (hostDocument) {
             doc = hostDocument;
@@ -3065,7 +3076,7 @@
     
     Ext.onReady(function() {
             // Generate CSS Rules but allow for overrides.
-            var CSS = new CSSInterface(document), rules = [];
+            var CSS = new Ext.ux.ManagedIFrame.CSS(document), rules = [];
 
             CSS.getRule('.ux-mif-fill')|| (rules.push('.ux-mif-fill{height:100%;width:100%;}'));
             CSS.getRule('.ux-mif-mask-target')|| (rules.push('.ux-mif-mask-target{position:relative;zoom:1;}'));

@@ -91,7 +91,8 @@
                      'unload',
                      'scroll',
                      'exception', 
-                     'message'];
+                     'message',
+                     'reset'];
                      
     var reSynthEvents = new RegExp('^('+frameEvents.join('|')+ ')', 'i');
 
@@ -249,7 +250,14 @@
                      * @param {Ext.ux.MIF.Element} this.
                      * @param {Ext.Event}
                      */
-                     'scroll'
+                     'scroll',
+                     
+                    /**
+                     * Fires when the iFrame has been reset to a neutral domain state (blank document).
+                     * @event reset
+                     * @param {Ext.ux.MIF.Element} this
+                     */
+                    'reset'
                  );
                     //  Private internal document state events.
                  this._observable.addEvents('_docready','_docload');
@@ -262,7 +270,7 @@
 
             /** @private
              * Removes the MIFElement interface from the FRAME Element.
-             * It does NOT remove the managed FRAME from the DOM.  Use the {@link remove} method to perfom both functions.
+             * It does NOT remove the managed FRAME from the DOM.  Use the {@link Ext.#ux.ManagedIFrame.Element-remove} method to perfom both functions.
              */
             destructor   :  function () {
                 this.dom[Ext.isIE?'onreadystatechange':'onload'] = this.dom['onerror'] = EMPTYFN;
@@ -474,7 +482,7 @@
 		    },
 
             /**
-             * @cfg {String} resetUrl Frame document reset string for use with the {@link #Ext.ux.MIF-reset} method.
+             * @cfg {String} resetUrl Frame document reset string for use with the {@link #Ext.ux.ManagedIFrame.Element-reset} method.
              * Defaults:<p> For IE on SSL domains - the current value of Ext.SSL_SECURE_URL<p> "about:blank" for all others.
              */
             resetUrl : (function(){
@@ -588,7 +596,7 @@
 	                        this.loadMask.disabled = loadMaskOff;
 	                    };
 	                    Ext.isFunction(cb) &&  (cb = cb.apply(scope || this, arguments));
-                        
+                        this._observable.fireEvent("reset", this);
 	                }, this, {single:true});
 	            
                     Ext.isFunction(s) && ( s = src());
@@ -835,7 +843,7 @@
                             D && addListener(Ext.isIE ? w : D, 'scroll', p);
                         }
                         
-                        D && (this.CSS = new CSSInterface(D));
+                        D && (this.CSS = new Ext.ux.ManagedIFrame.CSS(D));
                        
                     }
                 } catch (ex) {}
@@ -1566,7 +1574,7 @@
         focusOnLoad   : false,
         
         /**
-         * @property {Object} frameEl An {@link Ext.ux.ManagedIFrame.Element} reference to rendered frame Element.
+         * @property {Object} frameEl An {@link #Ext.ux.ManagedIFrame.Element} reference to rendered frame Element.
          */
         frameEl : null, 
   
@@ -1586,6 +1594,15 @@
          */
         autoScroll: true,
         
+         /**
+         * @cfg {String/Object} autoLoad
+         * Loads this Components frame after the Component is rendered with content returned from an
+         * XHR call or optionally from a form submission.  See {@link #Ext.ux.ManagedIFrame.ComponentAdapter-load} and {@link #Ext.ux.ManagedIFrame.ComponentAdapter-submitAsTarget} methods for
+         * available configuration options.
+         * @default null
+         */
+        autoLoad: null,
+        
         /** @private */
         getId : function(){
              return this.id   || (this.id = "mif-comp-" + (++Ext.Component.AUTO_ID));
@@ -1598,6 +1615,7 @@
         /**
          * Sets the autoScroll state for the frame.
          * @param {Boolean} auto True to set overflow:auto on the frame, false for overflow:hidden
+         * @return {Ext.ux.ManagedIFrame.Component} this
          */
         setAutoScroll : function(auto){
             var scroll = Ext.value(auto, this.autoScroll === true);
@@ -1696,7 +1714,7 @@
          *
          * </code></pre>
          *
-         * @return {Ext.ux.ManagedIFrame.Component]} this
+         * @return {Ext.ux.ManagedIFrame.Component} this
          */
         submitAsTarget  : function(submitCfg){
             this.getFrame() && this.frameEl.submitAsTarget.apply(this.frameEl, arguments);
@@ -1732,7 +1750,7 @@
          *            disableCaching, indicatorText and loadScripts and are used
          *            to set their associated property on this panel Updater
          *            instance.
-         * @return {Ext.ux.ManagedIFrame.Component]} this
+         * @return {Ext.ux.ManagedIFrame.Component} this
          */
         load : function(loadCfg) {
             if(loadCfg && this.getFrame()){
@@ -1754,7 +1772,7 @@
         },
 
         /**
-         * Get the {@link Ext.Updater} for this panel's iframe. Enables
+         * Get the {@link #Ext.ux.ManagedIFrame.Updater} for this panel's iframe. Enables
          * Ajax-based document replacement of this panel's iframe document.
          *
          * @return {Ext.ux.ManagedIFrame.Updater} The Updater
@@ -1778,6 +1796,7 @@
          *            frame document has been fully loaded.
          * @param {Object} scope (Optional) scope by which the callback function is
          *            invoked.
+         * @return {Ext.ux.ManagedIFrame.Component} this
          */
         setSrc : function(url, discardUrl, callback, scope) {
             this.getFrame() && this.frameEl.setSrc.apply(this.frameEl, arguments);
@@ -1799,6 +1818,7 @@
          *            frame document has been fully loaded.
          * @param {Object} scope (Optional) scope by which the callback function is
          *            invoked.
+         * @return {Ext.ux.ManagedIFrame.Component} this
          */
         setLocation : function(url, discardUrl, callback, scope) {
            this.getFrame() && this.frameEl.setLocation.apply(this.frameEl, arguments);
@@ -1937,7 +1957,14 @@
                      * @param {Ext.ux.ManagedIFrame.Element} frameEl
                      * @param {Ext.Event}
                      */
-                    'unload'
+                    'unload',
+                    
+                    /**
+                     * Fires when the iFrame has been reset to a neutral domain state (blank document).
+                     * @event reset
+                     * @param {Ext.ux.ManagedIFrame.Element} frameEl
+                     */
+                    'reset'
                 );
         },
         
@@ -1973,12 +2000,7 @@
 	            }
 	            this.refName = levels[--i];
 	            t[this.refName] || (t[this.refName] = this);
-	            /**
-	             * @type Ext.Container
-	             * @property refOwner
-	             * The ancestor Container into which the {@link #ref} reference was inserted if this Component
-	             * is a child of a Container, and has been configured with a <code>ref</code>.
-	             */
+	            
 	            this.refOwner = t;
 	        }
 	    }
@@ -2320,15 +2342,22 @@
         
     }); 
     
-    /** @private
-     * Stylesheet Frame interface object
-     */
+    
     var styleCamelRe = /(-[a-z])/gi;
     var styleCamelFn = function(m, a) {
         return a.charAt(1).toUpperCase();
     };
-    /** @private */
-    var CSSInterface = function(hostDocument) {
+    
+    /**
+     * @class Ext.ux.ManagedIFrame.CSS
+     * Stylesheet interface object
+     * @version 2.0.1 
+     * @author Doug Hendricks. doug[always-At]theactivegroup.com
+     * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
+     * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
+     * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
+     */
+    Ext.ux.ManagedIFrame.CSS = function(hostDocument) {
         var doc;
         if (hostDocument) {
             doc = hostDocument;
@@ -2764,7 +2793,7 @@
     /** @private */
     Ext.onReady(function() {
             // Generate CSS Rules but allow for overrides.
-            var CSS = new CSSInterface(document), rules = [];
+            var CSS = new Ext.ux.ManagedIFrame.CSS(document), rules = [];
 
             CSS.getRule('.ux-mif-fill')|| (rules.push('.ux-mif-fill{height:100%;width:100%;}'));
             CSS.getRule('.ux-mif-mask-target')|| (rules.push('.ux-mif-mask-target{position:relative;zoom:1;}'));
