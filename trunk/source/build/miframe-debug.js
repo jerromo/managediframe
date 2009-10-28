@@ -2348,9 +2348,15 @@
         
         
         load : function(loadCfg) {
-            this.getFrame() && this.resetFrame(null, 
-              this.frameEl.load.createDelegate(this.frameEl,arguments) );
-            this.autoLoad = loadCfg; 
+            if(loadCfg && this.getFrame()){
+                var args = arguments;
+                this.resetFrame(null, function(){ 
+                    loadCfg.submitAsTarget ?
+                    this.submitAsTarget.apply(this,args):
+                    this.frameEl.load.apply(this.frameEl,args);
+                },this);
+            }
+            this.autoLoad = loadCfg;
             return this;
         },
 
