@@ -638,6 +638,7 @@
                     this.hideMask(true);
                     Ext.isFunction(callback) && callback.call(scope, this);
                 }
+                
                 return this;
             },
             
@@ -1143,9 +1144,7 @@
                 obv.fireEvent("_docready", this);
                 
                 (D = this.getDoc()) && (D.isReady = true);
-                
-                
-                
+               
                 if ( !this.domFired && 
                      (this._hooked = this._renderHook())) {
                         // Only raise if sandBox injection succeeded (same origin)
@@ -1722,6 +1721,7 @@
          *         text: &quot;Loading...&quot;,
          *         timeout: 30,
          *         scripts: false,
+         *         submitAsTarget : false,  //optional true, to use Form submit to load the frame (see submitAsTarget method)
          *         renderer:{render:function(el, response, updater, callback){....}}  //optional custom renderer
          *      });
          *
@@ -1735,9 +1735,15 @@
          * @return {Ext.ux.ManagedIFrame.Component]} this
          */
         load : function(loadCfg) {
-            this.getFrame() && this.resetFrame(null, 
-              this.frameEl.load.createDelegate(this.frameEl,arguments) );
-            this.autoLoad = loadCfg; 
+            if(loadCfg && this.getFrame()){
+                var args = arguments;
+                this.resetFrame(null, function(){ 
+                    loadCfg.submitAsTarget ?
+                    this.submitAsTarget.apply(this,args):
+                    this.frameEl.load.apply(this.frameEl,args);
+                },this);
+            }
+            this.autoLoad = loadCfg;
             return this;
         },
 
@@ -2024,6 +2030,7 @@
             onRender : function(){
                 //create a wrapper DIV if the component is not targeted
                 this.el || (this.autoEl = {});
+                
                 MIF.Component.superclass.onRender.apply(this, arguments);
                 
                 //default child frame's name to that of MIF-parent id (if not specified on frameCfg).
@@ -2071,6 +2078,7 @@
             /** @private */
             afterRender  : function(container) {
                 MIF.Component.superclass.afterRender.apply(this,arguments);
+                
                 // only resize (to Parent) if the panel is NOT in a layout.
                 // parentNode should have {style:overflow:hidden;} applied.
                 if (this.fitToParent && !this.ownerCt) {
@@ -2112,14 +2120,16 @@
                     this.getUpdater().showLoadIndicator = this.showLoadIndicator || false;
                     
                     //Resume Parent containers' events 
-                    var resumeEvents = this.relayTarget && this.ownerCt ? 
+                    var resumeEvents = this.relayTarget && this.ownerCt ?                         
                        this.ownerCt.resumeEvents.createDelegate(this.ownerCt) : null;
                        
                     if(this.autoload){
                        this.doAutoLoad();
-                    } else if(this.html) {
-                       F.update(this.html);
+                    } else if(this.frameMarkup || this.html) {
+                       F.update(this.frameMarkup || this.html, true, resumeEvents);
                        delete this.html;
+                       delete this.frameMarkup;
+                       return;
                     }else{
                        
                         if(this.defaultSrc){
@@ -2128,7 +2138,8 @@
                             /* If this is a no-action frame, reset it first, then resume parent events
                              * allowing access to a fully reset frame by upstream afterrender/layout events
                              */ 
-                            return F.reset(null, resumeEvents);
+                            F.reset(null, resumeEvents);
+                            return;
                         }
                     }
                     resumeEvents && resumeEvents();
@@ -2172,7 +2183,7 @@
             useShim   : true,
            autoScroll : Ext.value(config.autoScroll , this.autoScroll),
           defaultSrc  : Ext.value(config.defaultSrc , this.defaultSrc),
-                html  : Ext.value(config.html , this.html),
+         frameMarkup  : Ext.value(config.html , this.html),
             loadMask  : Ext.value(config.loadMask , this.loadMask),
          focusOnLoad  : Ext.value(config.focusOnLoad, this.focusOnLoad),
           frameConfig : Ext.value(config.frameConfig || config.frameCfg , this.frameConfig),
