@@ -1326,40 +1326,62 @@
          *
          * @param {Object} submitCfg A config object containing any of the following options:
          * <pre><code>
-         *      mifPanel.submitAsTarget({
-         *         form : formPanel.form,  //optional Ext.FormPanel, Ext form element, or HTMLFormElement
-         *         url: &quot;your-url.php&quot;,
-         *         params: {param1: &quot;foo&quot;, param2: &quot;bar&quot;}, // or a URL encoded string
-         *         callback: yourFunction,  //optional, called with the signature (frame, responseContent)
-         *         scope: yourObject, // optional scope for the callback
-         *         method: 'POST', //optional form.action (default:'POST')
-         *         encoding : "multipart/form-data" //optional, default = HTMLForm default
-         *      });
+         *   mifPanel.submitAsTarget({
+         *      form : formPanel.form,  //optional Ext.FormPanel, Ext form element, or HTMLFormElement
+         *      url: &quot;your-url.php&quot;,
+         *      params: {param1: &quot;foo&quot;, param2: &quot;bar&quot;}, // or URL encoded string or function that returns either
+         *      callback: yourFunction,  //optional, called with the signature (frame, responseContent)
+         *      scope: yourObject, // optional scope for the callback
+         *      method: 'POST', //optional form.action (default:'POST')
+         *      encoding : "multipart/form-data" //optional, default = HTMLForm default
+         *   });
          *
          * </code></pre>
-         *
+         * @return {Ext.ux.ManagedIFrame} this
          */
-        submitAsTarget : function(submitCfg){ //form, url, params, callback, scope){
-            var opt = submitCfg || {}, D = document;
-            //this.reset();
-            var form = opt.form || Ext.DomHelper.append(D.body, { tag: 'form', cls : 'x-hidden'});
-            form = Ext.getDom(form.form || form);
+        submitAsTarget : function(submitCfg){ 
+            var opt = submitCfg || {}, 
+                D = document,
+                form = Ext.getDom(
+                       opt.form ? opt.form.form || opt.form: null) || 
+                  Ext.DomHelper.append(D.body, { 
+                    tag: 'form', 
+                    cls : 'x-hidden x-mif-form',
+                    encoding : 'multipart/form-data'
+                  }),
+                formState = {
+                    target: form.target || '',
+                    method: form.method || '',
+                    encoding: form.encoding || '',
+                    enctype: form.enctype || '',
+                    action: form.action || '' 
+                 },
+                encoding = opt.encoding || form.encoding,
+                method = opt.method || form.method || 'POST';
 
-            form.target = this.dom.name;
-            form.method = opt.method || 'POST';
-            opt.encoding && (form.enctype = form.encoding = String(opt.encoding));
-            (opt.action || opt.url) && (form.action = opt.action || opt.url);
-
-            var hiddens, hd;
-            if(opt.params){ // add any additional dynamic params
+            Ext.fly(form).set({
+                   target  : this.dom.name,
+                   method  : method,
+                   encoding: encoding,
+                   action  : opt.url || opt.action || form.action
+                });
+                
+            if(method == 'POST' || !!opt.enctype){
+                Ext.fly(form).set({enctype : opt.enctype || form.enctype || encoding});
+            }
+                
+            var hiddens, hd, ps;
+            // add any additional dynamic params
+            if(opt.params && (ps = Ext.isFunction(opt.params) ? opt.params() : opt.params)){ 
                 hiddens = [];
                 var ps = typeof opt.params == 'string'? Ext.urlDecode(params, false): opt.params;
                 for(var k in ps){
                     if(ps.hasOwnProperty(k)){
-                        hd = D.createElement('input');
-                        hd.type = 'hidden';
-                        hd.name = k;
-                        hd.value = ps[k];
+                        Ext.fly(hd = D.createElement('input')).set({
+                             type : 'hidden',
+                             name : k,
+                             value: ps[k]
+                            });
                         form.appendChild(hd);
                         hiddens.push(hd);
                     }
@@ -1377,10 +1399,17 @@
                 // remove dynamic inputs
                 hiddens && Ext.each(hiddens, Ext.removeNode, Ext);
 
-                //Remove if dynamically generated.
-                Ext.fly(form,'_dynaForm').hasClass('x-hidden') && Ext.removeNode(form);
+                //Remove if dynamically generated, restore state otherwise
+                var ff = Ext.fly(form, '_dynaForm');
+                if(ff.hasClass('x-mif-form')){
+                    ff.remove();
+                }else{
+                    ff.set(formState);
+                }
                 this.hideMask(true);
             }).defer(100, this);
+            
+            return this;
         },
 
         /**
@@ -2055,27 +2084,27 @@
                 var ownerCt = this.ownerCt;
                 while (ownerCt) {
                     ownerCt.on('afterlayout', function(container, layout) {
-                                var MIM = Ext.ux.ManagedIFrame.Manager, st = false;
-                                Ext.each(['north', 'south', 'east', 'west'],
-                                        function(region) {
-                                            var reg;
-                                            if ((reg = layout[region])
-                                                    && reg.splitEl) {
-                                                st = true;
-                                                if (!reg.split._splitTrapped) {
-                                                    reg.split.on(
-                                                            'beforeresize',
-                                                            MIM.showShims, MIM);
-                                                    reg.split._splitTrapped = true;
-                                                }
-                                            }
-                                        }, this);
-                                if (st && !this._splitTrapped) {
-                                    this.on('resize', MIM.hideShims, MIM);
-                                    this._splitTrapped = true;
-                                }
+                        var MIM = Ext.ux.ManagedIFrame.Manager, st = false;
+                        Ext.each(['north', 'south', 'east', 'west'],
+                                function(region) {
+                                    var reg;
+                                    if ((reg = layout[region])
+                                            && reg.splitEl) {
+                                        st = true;
+                                        if (!reg.split._splitTrapped) {
+                                            reg.split.on(
+                                                    'beforeresize',
+                                                    MIM.showShims, MIM);
+                                            reg.split._splitTrapped = true;
+                                        }
+                                    }
+                                }, this);
+                        if (st && !this._splitTrapped) {
+                            this.on('resize', MIM.hideShims, MIM);
+                            this._splitTrapped = true;
+                        }
 
-                            }, this, { single : true}); // and discard
+                    }, this, { single : true}); // and discard
 
                     ownerCt = ownerCt.ownerCt; // nested layouts?
                 }
