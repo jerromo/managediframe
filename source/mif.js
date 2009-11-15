@@ -5,8 +5,8 @@
  * This file is distributed on an AS IS BASIS WITHOUT ANY WARRANTY; without even
  * the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  * ***********************************************************************************
- * @version 2.0.1 
- * [For Ext 3.0 or higher only]
+ * @version 2.1
+ * [For Ext 3.1 or higher only]
  *
  * License: ux.ManagedIFrame, ux.ManagedIFrame.Panel, ux.ManagedIFrame.Portlet, ux.ManagedIFrame.Window  
  * are licensed under the terms of the Open Source GPL 3.0 license:
@@ -61,24 +61,13 @@
  
   //assert multidom support: REQUIRED for Ext 3 or higher!
   if(typeof ELD.getDocument != 'function'){
-     throw "MIF 2.0 requires multidom support" ;
+     throw "MIF 2.1 requires multidom support" ;
   }
-  //assert Ext 3 SVN/RC2.1 or higher!
-  if(Ext.version < 3 || typeof Ext.Element.data != 'function'){
-     throw "MIF 2.0 requires Ext 3.0 SVN/RC2.1 or higher." ;
+  //assert Ext 3.0.3 + , SVN
+  if(!Ext.isDefined(Ext.elCache)){
+     throw "MIF 2.1 requires Ext 3.1 or higher." ;
   }
   
-  Ext.isDocument = function(obj , testOrigin){
-            var test = OP.toString.apply(obj) == '[object HTMLDocument]' || (obj && obj.nodeType == 9);
-            if(test && !!testOrigin){
-                try{
-                    test = test && !!obj.location;
-                }
-                catch(e){return false;}
-            }
-            return test;
-        };
-
   Ext.ns('Ext.ux.ManagedIFrame', 'Ext.ux.plugin');
   
   var MIM, MIF = Ext.ux.ManagedIFrame, MIFC;
@@ -99,7 +88,7 @@
     /**
      * @class Ext.ux.ManagedIFrame.Element
      * @extends Ext.Element
-     * @version 2.0.1 
+     * @version 2.1 
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a> 
      * @author Doug Hendricks. Forum ID: <a href="http://extjs.com/forum/member.php?u=8730">hendricd</a> 
      * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
@@ -114,17 +103,22 @@
                          
             constructor : function(element, forceNew, doc ){
                 var d = doc || document;
-                var elCache  = ELD.resolveCache ? ELD.resolveCache(d)._elCache : El.cache ;
-                var dom = typeof element == "string" ?
-                            d.getElementById(element) : element.dom || element;
+                var elCache  = ELD.resolveDocumentCache(d);
+                var dom = Ext.getDom(element, d);
                 if(!dom || !(/^(iframe|frame)/i).test(dom.tagName)) { // invalid id/element
                     return null;
                 }
-                var id = dom.id;
+                var id = Ext.id(dom);
                 if(forceNew !== true && id && elCache[id]){ // element object already exists
-                    return elCache[id];
+                    return elCache[id].el;
                 } else {
-                    if(id){ elCache[id] = this;}
+                    
+                   id && (elCache[id] = {
+                     el: this,
+                     events : {},
+                     data : {}
+                     });
+                    
                 }
                 /**
                  * The DOM element
@@ -136,11 +130,11 @@
                  * The DOM element ID
                  * @type String
                  */
-                 this.id = id || Ext.id(dom);
+                 this.id = id ;
                  this.dom.name || (this.dom.name = this.id);
                  
                  if(Ext.isIE){
-                     document.frames[this.dom.name] || (document.frames[this.dom.name].name = this.dom);
+                     document.frames && (document.frames[this.dom.name] || (document.frames[this.dom.name] = this.dom));
                  }
                  
                  this.dom.ownerCt = this;
@@ -276,7 +270,7 @@
                 this.dom[Ext.isIE?'onreadystatechange':'onload'] = this.dom['onerror'] = EMPTYFN;
                 MIM.deRegister(this);
                 this.removeAllListeners();
-                Ext.destroy(this.shim, this.DDM);
+                Ext.destroy(this.frameShim, this.DDM);
                 this.hideMask(true);
                 delete this.loadMask;
                 this.reset(); 
@@ -416,6 +410,7 @@
                     cls : 'x-hidden x-mif-form',
                     encoding : 'multipart/form-data'
                   }),
+                formFly = Ext.fly(form, '_dynaForm'),
                 formState = {
                     target: form.target || '',
                     method: form.method || '',
@@ -426,7 +421,7 @@
                 encoding = opt.encoding || form.encoding,
                 method = opt.method || form.method || 'POST';
         
-                Ext.fly(form, D).set({
+                formFly.set({
                    target  : this.dom.name,
                    method  : method,
                    encoding: encoding,
@@ -434,7 +429,7 @@
                 });
                 
                 if(method == 'POST' || !!opt.enctype){
-                    Ext.fly(form, D).set({enctype : opt.enctype || form.enctype || encoding});
+                    formFly.set({enctype : opt.enctype || form.enctype || encoding});
                 }
                 
 		        var hiddens, hd, ps;
@@ -469,12 +464,13 @@
 		            hiddens && Ext.each(hiddens, Ext.removeNode, Ext);
 
                     //Remove if dynamically generated, restore state otherwise
-                    var ff = Ext.fly(form, '_dynaForm');
-		            if(ff.hasClass('x-mif-form')){
-                        ff.remove();
+		            if(formFly.hasClass('x-mif-form')){
+                        formFly.remove();
                     }else{
-                        ff.set(formState);
+                        formFly.set(formState);
                     }
+                    delete El._flyweights['_dynaForm'];
+                    formFly = null;
 		            this.hideMask(true);
 		        }).defer(100, this);
                 
@@ -784,40 +780,8 @@
              * Removes a DOM Element from the embedded document
              * @param {Element/String} node The node id or node Element to remove
              */
-            removeNode : function( node) {
-                
-                var dom = n ? n.dom || n : null;
-		         if(dom && dom.parentNode && dom.tagName != 'BODY'){
-                    
-                    if(!dom.ownerDocument || dom.ownerDocument != this.getFrameDocument()){
-                        throw new MIF.Error('documentcontext-remove' , dom.ownerDocument);
-                    }
-		            var el, docCache = this._domCache;
-		            if(docCache && (el = docCache._elCache[dom.id])){
-		                //clear out any references from the El.cache(s)
-		                el.dom && el.removeAllListeners();
-		                delete docCache._elCache[dom.id];
-		                delete docCache._dataCache[dom.id];
-		                el.dom && (el.dom = null);
-		                el = null;
-		            }
-		            var D;
-                    if(this.domWritable()){
-			            if(Ext.isIE && !Ext.isIE8){
-			                var d = D.createElement('div');
-			                d.appendChild(dom);
-			                d.removeChild(dom);
-			                d = null;  //just dump the scratch DIV reference here.
-			            } else {
-			                var p = dom.parentNode;
-			                p.removeChild(dom);
-			                p = null;
-			            }
-                    }
-		          }
-		          dom = null;  
-            },
-
+            removeNode : Ext.removeNode,
+            
             /**
              * @private execScript sandbox and messaging interface
              */ 
@@ -854,11 +818,14 @@
             _unHook : function() {
                 if (this._hooked) {
                     var id, el, c = this._domCache;
-                    for ( id in c ) {
-                        el = c[id];
+                    if(c){
+                      for ( id in c ) {
+                        el = c[id].el;
                         el && el.removeAllListeners && el.removeAllListeners();
-                        el && (c[id] = el = null);
+                        el && (c[id].el = el = null);
+                        delete c[id].data;
                         delete c[id];
+                      }
                     }
                     
                     this._windowContext && (this._windowContext.hostMIF = null);
@@ -875,7 +842,7 @@
                 }
                 MIM._flyweights = {};
                 this._domCache = null;
-                ELD.clearCache && ELD.clearCache(this.id);
+                ELD.clearDocumentCache && ELD.clearDocumentCache(this.id);
                 this.CSS = this.CSS ? this.CSS.destroy() : null;
                 this.domFired = this._frameAction = this.domReady = this._hooked = false;
             },
@@ -898,19 +865,13 @@
                 } catch (gdEx) {
                     this._domCache = null;
                     
-                    ELD.clearCache && ELD.clearCache(this.id);
+                    ELD.clearDocumentCache && ELD.clearDocumentCache(this.id);
                     return false; // signifies probable access restriction
                 }
                 doc = (doc && Ext.isFunction(ELD.getDocument)) ? ELD.getDocument(doc,true) : doc;
                 
                 if(doc){
-                  this._domCache || (this._domCache = ELD.resolveCache ? 
-                
-                     ELD.resolveCache(doc, this.id) :   
-                        {_elCache : {},
-                       _dataCache : {},
-                           '$_doc': Ext.get(doc,doc)
-                    });
+                  this._domCache || (this._domCache = ELD.resolveDocumentCache(doc, this.id));
                 }
                 
                 return doc;
@@ -1184,7 +1145,7 @@
              * state, and raise the 'domready' event when applicable.
              */
             checkDOM : function( win) {
-                if (Ext.isOpera || Ext.isGecko ) { return; }
+                if ( Ext.isGecko ) { return; }  //Ext.isOpera ||
                 // initialise the counter
                 var n = 0, frame = this, domReady = false,
                     b, l, d, 
@@ -1280,8 +1241,8 @@
              */
             showMask : function(msg, msgCls, maskCls) {
                 var lmask = this.loadMask;
-                if (lmask && !lmask.disabled && !this._mask){
-                    this.mask(msg || lmask.msg, msgCls || lmask.msgCls, maskCls || lmask.maskCls);
+                if (lmask && !lmask.disabled ){
+                    this.mask(msg || lmask.msg, msgCls || lmask.msgCls, maskCls || lmask.maskCls, lmask.maskEl);
                 }
             },
             
@@ -1290,23 +1251,23 @@
              * @param {Boolean} forced True to hide the mask regardless of document ready/loaded state.
              */
             hideMask : function(forced) {
-                var tlm = this.loadMask;
-                if (tlm && !!this._mask){
-                    if (forced || (tlm.hideOnReady && this.domReady)) {
-                        this.unmask();
-                    }
+                var tlm = this.loadMask || {};
+                if (forced || (tlm.hideOnReady && this.domReady)) {
+                     this.unmask();
                 }
             },
+            
             /**
              * Puts a mask over the FRAME to disable user interaction. Requires core.css.
              * @param {String} msg (optional) A message to display in the mask
              * @param {String} msgCls (optional) A css class to apply to the msg element
              * @param {String} maskCls (optional) A css class to apply to the mask element
+             * @param {String/Element} maskEl (optional) A targeted Element (parent of the IFRAME) to use the masking agent
              * @return {Element} The mask element
              */
-            mask : function(msg, msgCls, maskCls){
+            mask : function(msg, msgCls, maskCls, maskEl){
                 this._mask && this.unmask();
-                var p = this.parent('.'+this.cls+'-mask-target') || this.parent();
+                var p = Ext.get(maskEl) || this.parent('.ux-mif-mask-target') || this.parent();
                 if(p.getStyle("position") == "static" && 
                     !p.select('iframe,frame,object,embed').elements.length){
                         p.addClass("x-masked-relative");
@@ -1314,20 +1275,15 @@
                 
                 p.addClass("x-masked");
                 
-                this._mask = Ext.DomHelper.append(p, {cls: maskCls || this.cls+"-el-mask"} , true);
+                this._mask = Ext.DomHelper.append(p, {cls: maskCls || "ux-mif-el-mask"} , true);
                 this._mask.setDisplayed(true);
                 this._mask._agent = p;
                 
                 if(typeof msg == 'string'){
-                     var delay = (this.loadMask ? this.loadMask.delay : 0) || 10;
-
-                     this._maskMsg = Ext.DomHelper.append(p, {cls: msgCls || this.cls+"-el-mask-msg" , style: {visibility:'hidden'}, cn:{tag:'div', html:msg}}, true);
-                     this._maskMsg.setVisibilityMode(Ext.Element.VISIBILITY);
-                     (function(){
-                       this._mask && 
-                        this._maskMsg && 
-                          this._maskMsg.center(p).setVisible(true);
-                      }).defer(delay,this);
+                     this._maskMsg = Ext.DomHelper.append(p, {cls: msgCls || "ux-mif-el-mask-msg" , style: {visibility:'hidden'}, cn:{tag:'div', html:msg}}, true);
+                     this._maskMsg
+                        .setVisibilityMode(Ext.Element.VISIBILITY)
+                        .center(p).setVisible(true);
                 }
                 if(Ext.isIE && !(Ext.isIE7 && Ext.isStrict) && this.getStyle('height') == 'auto'){ // ie will not expand full height automatically
                     this._mask.setSize(undefined, this._mask.getHeight());
@@ -1359,9 +1315,9 @@
               * @param {String} shimCls Optional CSS style selector for the shimming agent. (defaults to 'ux-mif-shim' ).
               * @return (HTMLElement} the shim element
               */
-             createShim : function(imgUrl, shimCls ){
+             createFrameShim : function(imgUrl, shimCls ){
                  this.shimCls = shimCls || this.shimCls || 'ux-mif-shim';
-                 this.shim || (this.shim = this.next('.'+this.shimCls) ||  //already there ?
+                 this.frameShim || (this.frameShim = this.next('.'+this.shimCls) ||  //already there ?
                   Ext.DomHelper.append(
                      this.dom.parentNode,{
                          tag : 'img',
@@ -1369,8 +1325,8 @@
                          cls : this.shimCls ,
                          galleryimg : "no"
                     }, true)) ;
-                 this.shim && (this.shim.autoBoxAdjust = false); 
-                 return this.shim;
+                 this.frameShim && (this.frameShim.autoBoxAdjust = false); 
+                 return this.frameShim;
              },
              
              /**
@@ -1378,7 +1334,7 @@
               * @param {Boolean} show Optional True to activate the shim, false to hide the shim agent.
               */
              toggleShim : function(show){
-                var shim = this.shim || this.createShim();
+                var shim = this.frameShim || this.createFrameShim();
                 var cls = this.shimCls + '-on';
                 !show && shim.removeClass(cls);
                 show && !shim.hasClass(cls) && shim.addClass(cls);
@@ -1516,7 +1472,7 @@
 
   /**
    * @class Ext.ux.ManagedIFrame.ComponentAdapter
-   * @version 2.0.1 
+   * @version 2.1 
    * @author Doug Hendricks. doug[always-At]theactivegroup.com
    * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
    * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
@@ -2014,7 +1970,7 @@
   /**
    * @class Ext.ux.ManagedIFrame.Component
    * @extends Ext.BoxComponent
-   * @version 2.0.1 
+   * @version 2.1 
    * @author Doug Hendricks. doug[always-At]theactivegroup.com
    * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
    * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
@@ -2049,11 +2005,7 @@
             },   
 
             /** @private */
-            onRender : function(){
-                //create a wrapper DIV if the component is not targeted
-                this.el || (this.autoEl = {});
-                
-                MIF.Component.superclass.onRender.apply(this, arguments);
+            onRender : function(ct, position){
                 
                 //default child frame's name to that of MIF-parent id (if not specified on frameCfg).
                 var frCfg = this.frameCfg || this.frameConfig || (this.relayTarget ? {name : this.relayTarget.id}: {}) || {};
@@ -2062,32 +2014,39 @@
                 var frDOM = frCfg.autoCreate || frCfg;
                 frDOM = Ext.apply({tag  : 'iframe', id: Ext.id()}, frDOM);
                 
-                var frame = this.el.child('iframe',true) || this.el.child('frame',true) || 
-                            this.el.createChild([ 
-	                        Ext.apply({
-	                                name : frDOM.id,
-	                                frameborder : 0
-	                               }, frDOM ),
-	                         {tag: 'noframes', html : this.unsupportedText || null}
-	                        ]);
+                var el = Ext.getDom(this.el);
+
+                (el && el.tagName == 'iframe') || 
+                  (this.autoEl = Ext.apply({
+                                    name : frDOM.id,
+                                    frameborder : 0
+                                   }, frDOM ));
+                 
+                MIF.Component.superclass.onRender.apply(this, arguments);
+               
+                if(this.unsupportedText){
+                    ct.child('noframes') || ct.createChild({tag: 'noframes', html : this.unsupportedText || null});  
+                }   
+                var frame = this.el ;
+                
                 var F;
-                if( F = this.frameEl = (!!frame ? new MIF.Element(frame, true): null)){
+                if( F = this.frameEl = (this.el ? new MIF.Element(this.el.dom, true): null)){
                     (F.ownerCt = (this.relayTarget || this)).frameEl = F;
-                    F.addClass(['ux-mif', 'ux-mif-fill']);
+                    F.addClass('ux-mif'); 
                     if (this.loadMask) {
                         //resolve possible maskEl by Element name eg. 'body', 'bwrap', 'actionEl'
-                        var mEl = this.loadMask.maskEl || 'x-panel-bwrap';
+                        var mEl = this.loadMask.maskEl;
                         F.loadMask = Ext.apply({
                                     disabled    : false,
                                     hideOnReady : false,
-                                    msgCls      : 'ext-el-mask-msg x-mask-loading',
+                                    msgCls      : 'ext-el-mask-msg x-mask-loading', // 
                                     maskCls     : 'ext-el-mask'
                                 },
                                 {
-                                  maskEl : Ext.get( this[mEl] || F.parent('.' + mEl) || mEl || this.el) 
+                                  maskEl : F.ownerCt[String(mEl)] || F.parent('.' + String(mEl)) || F.parent('.ux-mif-mask-target') || mEl 
                                 },
                                 this.loadMask);
-                        F.cls && F.loadMask.maskEl && F.loadMask.maskEl.addClass(F.cls + '-mask-target');
+                        Ext.get(F.loadMask.maskEl) && Ext.get(F.loadMask.maskEl).addClass('ux-mif-mask-target');
                     }
                     F.disableMessaging = Ext.value(frCfg.disableMessaging, true);
                     F._observable && 
@@ -2138,7 +2097,7 @@
                     /*
                      * Create an img shim if the component participates in a layout or forced
                      */
-                    if(!!this.ownerCt || this.useShim ){ this.shim = F.createShim(); }
+                    if(!!this.ownerCt || this.useShim ){ this.frameShim = F.createFrameShim(); }
                     this.getUpdater().showLoadIndicator = this.showLoadIndicator || false;
                     
                     //Resume Parent containers' events 
@@ -2175,8 +2134,7 @@
                 if(F = this.getFrame()){
                     F.hide();
                     F.remove();
-                    El.uncache(F);
-                    this.frameEl = this.shim = null;
+                    this.frameEl = this.frameShim = null;
                 }
                 this.relayTarget && (this.relayTarget.frameEl = null);
                 MIF.Component.superclass.beforeDestroy.call(this);
@@ -2220,7 +2178,7 @@
   /**
    * @class Ext.ux.ManagedIFrame.Panel
    * @extends Ext.Panel
-   * @version 2.0.1 
+   * @version 2.1 
    * @author Doug Hendricks. doug[always-At]theactivegroup.com
    * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
    * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
@@ -2231,8 +2189,8 @@
    */
 
   Ext.ux.ManagedIFrame.Panel = Ext.extend( Ext.Panel , {
-        ctype       : "Ext.ux.ManagedIFrame.Panel",
-        
+        ctype       : 'Ext.ux.ManagedIFrame.Panel',
+        bodyCssClass: 'ux-mif-mask-target',
         constructor : function(config){
             MIF.Panel.superclass.constructor.call(this, embed_MIF.call(this, config));
          }
@@ -2247,7 +2205,7 @@
     /**
      * @class Ext.ux.ManagedIFrame.Portlet
      * @extends Ext.ux.ManagedIFrame.Panel
-     * @version 2.0.1 
+     * @version 2.1 
      * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a> 
      * @author Doug Hendricks. Forum ID: <a href="http://extjs.com/forum/member.php?u=8730">hendricd</a> 
@@ -2275,7 +2233,7 @@
   /**
    * @class Ext.ux.ManagedIFrame.Window
    * @extends Ext.Window
-   * @version 2.0.1 
+   * @version 2.1 
    * @author Doug Hendricks. 
    * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
    * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
@@ -2288,6 +2246,7 @@
   Ext.ux.ManagedIFrame.Window = Ext.extend( Ext.Window , 
        {
             ctype       : "Ext.ux.ManagedIFrame.Window",
+            bodyCssClass: 'ux-mif-mask-target',
             constructor : function(config){
 			    MIF.Window.superclass.constructor.call(this, embed_MIF.call(this, config));
             }
@@ -2302,7 +2261,7 @@
     /**
      * @class Ext.ux.ManagedIFrame.Updater
      * @extends Ext.Updater
-     * @version 2.0.1 
+     * @version 2.1 
      * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a> 
      * @author Doug Hendricks. Forum ID: <a href="http://extjs.com/forum/member.php?u=8730">hendricd</a> 
@@ -2351,7 +2310,7 @@
     /**
      * @class Ext.ux.ManagedIFrame.CSS
      * Stylesheet interface object
-     * @version 2.0.1 
+     * @version 2.1 
      * @author Doug Hendricks. doug[always-At]theactivegroup.com
      * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
      * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
@@ -2590,7 +2549,7 @@
 
     /**
      * @class Ext.ux.ManagedIFrame.Manager
-     * @version 2.0.1 
+     * @version 2.1 
 	 * @author Doug Hendricks. doug[always-At]theactivegroup.com
 	 * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
 	 * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
@@ -2679,14 +2638,14 @@
 
             /** @private */
             destroy : function() {
-                if (document.addEventListener) {
+                if (document.addEventListener && !Ext.isOpera) {
                       window.removeEventListener("DOMFrameContentLoaded", this._DOMFrameReadyHandler , false);
                 }
                 delete this._flyweights;
             }
         };
-        // for Gecko and Opera and any who might support it later 
-        document.addEventListener && 
+        // for Gecko and any who might support it later 
+        document.addEventListener && !Ext.isOpera &&
             window.addEventListener("DOMFrameContentLoaded", implementation._DOMFrameReadyHandler , false);
 
         Ext.EventManager.on(window, 'beforeunload', implementation.destroy, implementation);
@@ -2765,7 +2724,7 @@
      * Internal Error class for ManagedIFrame Components
 	 * @class Ext.ux.ManagedIFrame.Error
      * @extends Ext.Error
-     * @version 2.0.1 
+     * @version 2.1 
      * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a> 
      * @author Doug Hendricks. Forum ID: <a href="http://extjs.com/forum/member.php?u=8730">hendricd</a> 
@@ -2802,6 +2761,7 @@
               '.ux-mif-el-mask-msg {z-index: 1;position: absolute;top: 0;left: 0;border:1px solid;background:repeat-x 0 -16px;padding:2px;} ',
               '.ux-mif-el-mask-msg div {padding:5px 10px 5px 10px;border:1px solid;cursor:wait;} '
               ));
+
 
             if (!CSS.getRule('.ux-mif-shim')) {
                 rules.push('.ux-mif-shim {z-index:8500;position:absolute;top:0px;left:0px;background:transparent!important;overflow:hidden;display:none;}');
