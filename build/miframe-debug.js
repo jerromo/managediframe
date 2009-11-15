@@ -1,5 +1,5 @@
 /*
- * ux.ManagedIFrame.* 2.0 
+ * ux.ManagedIFrame.* 2.0.1
  * Copyright(c) 2007-2009, Active Group, Inc.
  * licensing@theactivegroup.com
  * 
@@ -12,7 +12,7 @@
  Ext.namespace('Ext.ux.plugin');
  Ext.onReady(function(){
     
-    
+   
     var CSS = Ext.util.CSS;
     if(CSS){ 
         CSS.getRule('.x-hide-nosize') || //already defined?
@@ -116,8 +116,8 @@
 	
 	            var cfg = {
                     visFixed  : true,
-                    animCollapse : Ext.isIE,
-                    animFloat   : Ext.isIE,
+                    animCollapse : false,
+                    animFloat   : false,
 		            hideMode  : hideMode,
 		            defaults  : this.defaults || {}
 	            };
@@ -1298,18 +1298,19 @@
                      'focus',
                      'blur',
                      'resize',
+                     'scroll',
                      'unload',
+                     'scroll',
                      'exception', 
-                     'message'];
+                     'message',
+                     'reset'];
                      
     var reSynthEvents = new RegExp('^('+frameEvents.join('|')+ ')', 'i');
 
     
      
     Ext.ux.ManagedIFrame.Element = Ext.extend(Ext.Element, {
-             
-            cls   :  'ux-mif',
-             
+                         
             constructor : function(element, forceNew, doc ){
                 var d = doc || document;
                 var elCache  = ELD.resolveCache ? ELD.resolveCache(d)._elCache : El.cache ;
@@ -1326,10 +1327,15 @@
                 }
                 
                 this.dom = dom;
-                this.cls && this.addClass(this.cls);
+
                 
                  this.id = id || Ext.id(dom);
                  this.dom.name || (this.dom.name = this.id);
+                 
+                 if(Ext.isIE){
+                     document.frames[this.dom.name] || (document.frames[this.dom.name].name = this.dom);
+                 }
+                 
                  this.dom.ownerCt = this;
                  MIM.register(this);
 
@@ -1358,7 +1364,13 @@
                     'focus',
 
                     
-                     'unload'
+                     'unload',
+                     
+                     
+                     'scroll',
+                     
+                    
+                    'reset'
                  );
                     //  Private internal document state events.
                  this._observable.addEvents('_docready','_docload');
@@ -1434,31 +1446,51 @@
             
             
             submitAsTarget : function(submitCfg){
-                var opt = submitCfg || {}, D = this.getDocument();
-		        
-		        var form = opt.form || Ext.DomHelper.append(D.body, { tag: 'form', cls : 'x-hidden'});
-		        form = Ext.getDom(form.form || form, D);
-		
-		        form.target = this.dom.name;
-		        form.method = opt.method || 'POST';
-		        opt.encoding && (form.enctype = form.encoding = String(opt.encoding));
-		        (opt.action || opt.url) && (form.action = opt.action || opt.url);
-		
-		        var hiddens, hd;
-		        if(opt.params){ // add any additional dynamic params
+                var opt = submitCfg || {}, 
+                D = this.getDocument(),
+  	            form = Ext.getDom(
+                       opt.form ? opt.form.form || opt.form: null, 
+                    D) || Ext.DomHelper.append(D.body, { 
+                    tag: 'form', 
+                    cls : 'x-hidden x-mif-form',
+                    encoding : 'multipart/form-data'
+                  }),
+                formState = {
+                    target: form.target || '',
+                    method: form.method || '',
+                    encoding: form.encoding || '',
+                    enctype: form.enctype || '',
+                    action: form.action || '' 
+                 },
+                encoding = opt.encoding || form.encoding,
+                method = opt.method || form.method || 'POST';
+        
+                Ext.fly(form, D).set({
+                   target  : this.dom.name,
+                   method  : method,
+                   encoding: encoding,
+                   action  : opt.url || opt.action || form.action
+                });
+                
+                if(method == 'POST' || !!opt.enctype){
+                    Ext.fly(form, D).set({enctype : opt.enctype || form.enctype || encoding});
+                }
+                
+		        var hiddens, hd, ps;
+                // add any additional dynamic params
+		        if(opt.params && (ps = Ext.isFunction(opt.params) ? opt.params() : opt.params)){ 
 		            hiddens = [];
-                    var ps = Ext.isFunction(opt.params) ? opt.params() : opt.params;
-		            ps = typeof ps == 'string'? Ext.urlDecode(ps, false): ps;
-		            for(var k in ps){
-		                if(ps.hasOwnProperty(k)){
-		                    hd = D.createElement('input');
-		                    hd.type = 'hidden';
-		                    hd.name = k;
-		                    hd.value = ps[k];
+                     
+		            Ext.iterate(ps = typeof ps == 'string'? Ext.urlDecode(ps, false): ps, 
+                        function(n, v){
+		                    Ext.fly(hd = D.createElement('input')).set({
+		                     type : 'hidden',
+		                     name : n,
+		                     value: v
+                            });
 		                    form.appendChild(hd);
 		                    hiddens.push(hd);
-		                }
-		            }
+		                });
 		        }
 		
 		        opt.callback && 
@@ -1470,12 +1502,18 @@
 		        
 		        //slight delay for masking
 		        (function(){
+                    
 		            form.submit();
                     // remove dynamic inputs
 		            hiddens && Ext.each(hiddens, Ext.removeNode, Ext);
 
-                    //Remove if dynamically generated.
-		            Ext.fly(form,'_dynaForm').hasClass('x-hidden') && Ext.removeNode(form);
+                    //Remove if dynamically generated, restore state otherwise
+                    var ff = Ext.fly(form, '_dynaForm');
+		            if(ff.hasClass('x-mif-form')){
+                        ff.remove();
+                    }else{
+                        ff.set(formState);
+                    }
 		            this.hideMask(true);
 		        }).defer(100, this);
                 
@@ -1543,13 +1581,14 @@
                 
                 if(win){
                     this.isReset= true;
+                    var cb = callback;
 	                this._observable.addListener('_docload',
 	                  function(frame) {
 	                    if(this.loadMask){
 	                        this.loadMask.disabled = loadMaskOff;
 	                    };
-                        
-	                    Ext.isFunction(callback) &&  callback.apply(scope || this, arguments);
+	                    Ext.isFunction(cb) &&  (cb = cb.apply(scope || this, arguments));
+                        this._observable.fireEvent("reset", this);
 	                }, this, {single:true});
 	            
                     Ext.isFunction(s) && ( s = src());
@@ -1586,6 +1625,7 @@
                     this.hideMask(true);
                     Ext.isFunction(callback) && callback.call(scope, this);
                 }
+                
                 return this;
             },
             
@@ -1705,19 +1745,20 @@
                                             ? 'window'
                                             : '{eval:function(s){return new Function("return ("+s+")")();}}')
                                     + ';})()')) {
-                        var w, p = this._frameProxy;
+                        var w, p = this._frameProxy, D = this.getFrameDocument();
                         if(w = this.getWindow()){
                             p || (p = this._frameProxy = this._eventProxy.createDelegate(this));    
                             addListener(w, 'focus', p);
                             addListener(w, 'blur', p);
                             addListener(w, 'resize', p);
                             addListener(w, 'unload', p);
+                            D && addListener(Ext.isIE ? w : D, 'scroll', p);
                         }
-                        var D = this.getFrameDocument();
-                        D && (this.CSS = new CSSInterface(D));
+                        
+                        D && (this.CSS = new Ext.ux.ManagedIFrame.CSS(D));
                        
                     }
-                } catch (ex) { }
+                } catch (ex) {}
                 return this.domWritable();
             },
             
@@ -1741,13 +1782,14 @@
                         removeListener(w, 'blur', p);
                         removeListener(w, 'resize', p);
                         removeListener(w, 'unload', p);
+                        removeListener(Ext.isIE ? w : this.getFrameDocument(), 'scroll', p);
                     }
                 }
                 MIM._flyweights = {};
                 this._domCache = null;
                 ELD.clearCache && ELD.clearCache(this.id);
                 this.CSS = this.CSS ? this.CSS.destroy() : null;
-                this.domFired = this._frameAction = this.isReset = this.domReady = this._hooked = false;
+                this.domFired = this._frameAction = this.domReady = this._hooked = false;
             },
             
             
@@ -1759,13 +1801,15 @@
                 try {
                     doc = (Ext.isIE && win ? win.document : null)
                             || this.dom.contentDocument
-                            || window.frames[this.id].document || null;
+                            || window.frames[this.dom.name].document || null;
                 } catch (gdEx) {
                     this._domCache = null;
+                    
                     ELD.clearCache && ELD.clearCache(this.id);
                     return false; // signifies probable access restriction
                 }
-                doc = (doc && Ext.isFunction(ELD.getDocument)) ? ELD.getDocument(doc,true) : doc;                 
+                doc = (doc && Ext.isFunction(ELD.getDocument)) ? ELD.getDocument(doc,true) : doc;
+                
                 if(doc){
                   this._domCache || (this._domCache = ELD.resolveCache ? 
                 
@@ -1775,6 +1819,7 @@
                            '$_doc': Ext.get(doc,doc)
                     });
                 }
+                
                 return doc;
             },
 
@@ -1911,9 +1956,9 @@
             
             loadHandler : function(e, target) {
                 var rstatus = (e && typeof e.type !== 'undefined' ? e.type: this.dom.readyState);
-
+                //console.log('lh', rstatus, this.isReset, this._frameAction, this.domReady, this.domFired, this.eventsFollowFrameLinks);
                 if (this.eventsFollowFrameLinks || this._frameAction || this.isReset ) {
-                //console.log('lh', rstatus, this._frameAction, this.domReady, this.domFired, this.isReset, e.eventPhase);                    
+                                    
 	                switch (rstatus) {
 	                    case 'domready' : // MIF
                         case 'DOMFrameContentLoaded' :
@@ -1936,17 +1981,21 @@
             
             _onDocReady  : function(eventName ){
                 var w, obv = this._observable, D;
-                
+                if(!this.isReset && this.focusOnLoad && (w = this.getWindow())){
+                    w.focus();
+                }
                 //raise internal event regardless of state.
                 obv.fireEvent("_docready", this);
                 
                 (D = this.getDoc()) && (D.isReady = true);
+               
                 if ( !this.domFired && 
                      (this._hooked = this._renderHook())) {
                         // Only raise if sandBox injection succeeded (same origin)
                         this.domFired = true;
                         this.isReset || obv.fireEvent.call(obv, 'domready', this);
                 }
+                
                 this.domReady = true;
                 this.hideMask();
             },
@@ -1955,7 +2004,7 @@
             _onDocLoaded  : function(eventName ){
                 var obv = this._observable, w;
                 this.domReady || this._onDocReady('domready');
-                this.focusOnLoad && (w = this.getWindow()) && w.focus();
+                
                 obv.fireEvent("_docload", this);  //invoke any callbacks
                 this.isReset || obv.fireEvent("documentloaded", this);
                 this.hideMask(true);
@@ -2167,6 +2216,7 @@
 	                 // same-domain unloads should clear ElCache for use with the
 	                 // next document rendering
 	                 (e.type == 'unload') && this._unHook();
+                     
                  }
                  return er;
             },
@@ -2205,7 +2255,7 @@
    Ext.ux.ManagedIFrame.ComponentAdapter.prototype = {
        
         
-        version : 2.0,
+        version : 2.01,
         
         
         defaultSrc : null,
@@ -2235,6 +2285,9 @@
 
         
         autoScroll: true,
+        
+         
+        autoLoad: null,
         
         
         getId : function(){
@@ -2302,8 +2355,15 @@
         
         
         load : function(loadCfg) {
-            this.getFrame() && this.resetFrame(null, 
-              this.frameEl.load.createDelegate(this.frameEl,arguments) );
+            if(loadCfg && this.getFrame()){
+                var args = arguments;
+                this.resetFrame(null, function(){ 
+                    loadCfg.submitAsTarget ?
+                    this.submitAsTarget.apply(this,args):
+                    this.frameEl.load.apply(this.frameEl,args);
+                },this);
+            }
+            this.autoLoad = loadCfg;
             return this;
         },
 
@@ -2334,7 +2394,10 @@
         getState : function() {
             var URI = this.getFrame() ? this.frameEl.getDocumentURI() || null : null;
             var state = this.supr().getState.call(this);
-            URI && (state = Ext.apply(state || {}, {defaultSrc : Ext.isFunction(URI) ? URI() : URI }));
+            state = Ext.apply(state || {}, 
+                {defaultSrc : Ext.isFunction(URI) ? URI() : URI,
+                 autoLoad   : this.autoLoad
+                });
             return state;
         },
         
@@ -2360,11 +2423,17 @@
                     
                     'focus',
                     
+                     
+                    'scroll',
+                    
                     
                     'resize',
                     
                     
-                    'unload'
+                    'unload',
+                    
+                    
+                    'reset'
                 );
         },
         
@@ -2376,7 +2445,26 @@
         //Suspend (and queue) host container events until the child MIF.Component is rendered.
         onAdd : function(C){
              C.relayTarget && this.suspendEvents(true); 
-        }
+        },
+        
+        initRef: function() {
+      
+	        if(this.ref){
+	            var t = this,
+	                levels = this.ref.split('/'),
+	                l = levels.length,
+	                i;
+	            for (i = 0; i < l; i++) {
+	                if(t.ownerCt){
+	                    t = t.ownerCt;
+	                }
+	            }
+	            this.refName = levels[--i];
+	            t[this.refName] || (t[this.refName] = this);
+	            
+	            this.refOwner = t;
+	        }
+	    }
       
    };
    
@@ -2412,6 +2500,7 @@
             onRender : function(){
                 //create a wrapper DIV if the component is not targeted
                 this.el || (this.autoEl = {});
+                
                 MIF.Component.superclass.onRender.apply(this, arguments);
                 
                 //default child frame's name to that of MIF-parent id (if not specified on frameCfg).
@@ -2432,6 +2521,7 @@
                 var F;
                 if( F = this.frameEl = (!!frame ? new MIF.Element(frame, true): null)){
                     (F.ownerCt = (this.relayTarget || this)).frameEl = F;
+                    F.addClass(['ux-mif', 'ux-mif-fill']);
                     if (this.loadMask) {
                         //resolve possible maskEl by Element name eg. 'body', 'bwrap', 'actionEl'
                         var mEl = this.loadMask.maskEl || 'x-panel-bwrap';
@@ -2452,11 +2542,13 @@
                         (this.relayTarget || this).relayEvents(F._observable, frameEvents.concat(this._msgTagHandlers || []));
                     delete this.contentEl;
                  }
+                 
             },
             
             
             afterRender  : function(container) {
                 MIF.Component.superclass.afterRender.apply(this,arguments);
+                
                 // only resize (to Parent) if the panel is NOT in a layout.
                 // parentNode should have {style:overflow:hidden;} applied.
                 if (this.fitToParent && !this.ownerCt) {
@@ -2464,6 +2556,8 @@
                             || this.getEl().parent()).getViewSize();
                     this.setSize(size.width - pos[0], size.height - pos[1]);
                 }
+
+                this.getEl().setOverflow('hidden'); //disable competing scrollers
                 this.setAutoScroll();
                 var F;
                
@@ -2490,15 +2584,27 @@
                     this.getUpdater().showLoadIndicator = this.showLoadIndicator || false;
                     
                     //Resume Parent containers' events 
-                    this.relayTarget && this.ownerCt && this.ownerCt.resumeEvents();
+                    var resumeEvents = this.relayTarget && this.ownerCt ?                         
+                       this.ownerCt.resumeEvents.createDelegate(this.ownerCt) : null;
+                       
                     if(this.autoload){
                        this.doAutoLoad();
-                    } else if(this.html) {
-                       F.update(this.html);
+                    } else if(this.frameMarkup || this.html) {
+                       F.update(this.frameMarkup || this.html, true, resumeEvents);
                        delete this.html;
+                       delete this.frameMarkup;
+                       return;
                     }else{
-                       this.defaultSrc ? F.setSrc(this.defaultSrc, false) : F.reset();
+                       
+                        if(this.defaultSrc){
+                            F.setSrc(this.defaultSrc, false);
+                        }else{
+                             
+                            F.reset(null, resumeEvents);
+                            return;
+                        }
                     }
+                    resumeEvents && resumeEvents();
                 }
             },
             
@@ -2533,7 +2639,7 @@
             useShim   : true,
            autoScroll : Ext.value(config.autoScroll , this.autoScroll),
           defaultSrc  : Ext.value(config.defaultSrc , this.defaultSrc),
-                html  : Ext.value(config.html , this.html),
+         frameMarkup  : Ext.value(config.html , this.html),
             loadMask  : Ext.value(config.loadMask , this.loadMask),
          focusOnLoad  : Ext.value(config.focusOnLoad, this.focusOnLoad),
           frameConfig : Ext.value(config.frameConfig || config.frameCfg , this.frameConfig),
@@ -2623,7 +2729,8 @@
         return a.charAt(1).toUpperCase();
     };
     
-    var CSSInterface = function(hostDocument) {
+    
+    Ext.ux.ManagedIFrame.CSS = function(hostDocument) {
         var doc;
         if (hostDocument) {
             doc = hostDocument;
@@ -2912,7 +3019,7 @@
                     config.autoCreate.parent || Ext.getBody(), Ext.apply({
                         tag : 'iframe',
                         frameborder : 0,
-                        cls : MIF.Element.prototype.cls,
+                        cls : 'x-mif',
                         src : (Ext.isIE && Ext.isSecure)? Ext.SSL_SECURE_URL: 'about:blank'
                     }, config.autoCreate)))
                     : null;
@@ -2969,9 +3076,9 @@
     
     Ext.onReady(function() {
             // Generate CSS Rules but allow for overrides.
-            var CSS = new CSSInterface(document), rules = [];
+            var CSS = new Ext.ux.ManagedIFrame.CSS(document), rules = [];
 
-            CSS.getRule('.ux-mif')|| (rules.push('.ux-mif{height:100%;width:100%;}'));
+            CSS.getRule('.ux-mif-fill')|| (rules.push('.ux-mif-fill{height:100%;width:100%;}'));
             CSS.getRule('.ux-mif-mask-target')|| (rules.push('.ux-mif-mask-target{position:relative;zoom:1;}'));
             CSS.getRule('.ux-mif-el-mask')|| (rules.push(
               '.ux-mif-el-mask {z-index: 100;position: absolute;top:0;left:0;-moz-opacity: 0.5;opacity: .50;*filter: alpha(opacity=50);width: 100%;height: 100%;zoom: 1;} ',

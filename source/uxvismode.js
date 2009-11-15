@@ -2,7 +2,7 @@
  Ext.namespace('Ext.ux.plugin');
  Ext.onReady(function(){
     
-    /* This important rule solves many of the <object/iframe>.reInit issues encountered
+   /* This important rule solves many of the <object/iframe>.reInit issues encountered
     * when setting display:none on an upstream(parent) element (on all Browsers except IE).
     * This default rule enables the new Panel:hideMode 'nosize'. The rule is designed to
     * set height/width to 0 cia CSS if hidden or collapsed.
@@ -72,7 +72,7 @@
 
      /**
       * @class Ext.ux.plugin.VisibilityMode
-      * @version 1.3
+      * @version 1.3.1
       * @author Doug Hendricks. doug[always-At]theactivegroup.com
       * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
       * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
@@ -181,8 +181,8 @@
 	
 	            var cfg = {
                     visFixed  : true,
-                    animCollapse : Ext.isIE,
-                    animFloat   : Ext.isIE,
+                    animCollapse : false,
+                    animFloat   : false,
 		            hideMode  : hideMode,
 		            defaults  : this.defaults || {}
 	            };
