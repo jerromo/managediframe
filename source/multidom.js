@@ -101,13 +101,13 @@
          var dom = n ? n.dom || n : null;
          if(dom && dom.parentNode && dom.tagName != 'BODY'){
             var el, elc, D = ELD.getDocument(dom), elCache = resolveCache(dom);
+
+            //clear out any references if found in the El.cache(s)
             if((elc = elCache[dom.id]) && (el = elc.el) ){
-                //clear out any references from the El.cache(s)
+
                 if(el.dom){
-                    (Ext.enableNestedListenerRemoval) ? el.purgeAllListeners() : el.removeAllListeners();
+                    (Ext.enableNestedListenerRemoval) ? Evm.purgeElement(el.dom, true) : Evm.removeAll(el.dom);
                 }
-                delete elc.events;
-                delete elc.data;
                 delete elCache[dom.id];
                 delete el.dom;
                 delete el._context;
@@ -117,12 +117,11 @@
             if(Ext.isIE && !Ext.isIE8){
                 var d = D.createElement('div');
                 d.appendChild(dom);
-                //d.innerHTML = '';  //either works equally well
                 d.removeChild(dom);
-                d = null;  //just dump the scratch DIV reference here.
+                d = null;  
             } else {
                 var p = dom.parentElement || dom.parentNode;
-                p.removeChild(dom);
+                p && p.removeChild(dom);
                 p = null;
             }
           }
@@ -341,6 +340,11 @@
                 cache = resolveCache(el);
                 el.dom = el.getDocument().getElementById(el.id) || el.dom; // refresh dom element in case no longer valid,
                                                               // catch case where it hasn't been appended
+                if(el.dom){
+                    (cache[el.id] || 
+                       (cache[el.id] = {data : {}, events : {}}
+                       )).el = el; // in case it was created directly with Element(), let's cache it
+                }
                 return el;
 
             }else if(Ext.isDocument(el)){
@@ -488,10 +492,11 @@
       */
 
         remove : function(cleanse, deep){
-          if(this.dom){
-            this.isMasked() && this.unmask();
+          var dom = this.dom;
+          this.isMasked() && this.unmask();
+          if(dom){
             cleanse && this.cleanse(true, deep);
-            Ext.removeNode(this);
+            Ext.removeNode(dom);
             delete this._context;
             delete this.dom;
           }
@@ -1340,14 +1345,15 @@
 	            }
 	        }
             
-	        // Cleanup IE Object leaks  ( Why make a copy?? )
-	        /* if (Ext.isIE && !Ext.isIE8) {
+	        // Cleanup IE COM Object Hash reference leaks 
+	        if (Ext.isIE) {
 	            var t = {};
 	            for (eid in EC) {
 	                t[eid] = EC[eid];
 	            }
-	            EC = Ext.elCache = Ext._documents[Ext.id(document)] = t;
-	        }*/
+	            Ext.elCache = Ext._documents[Ext.id(document)] = t;
+                t = null;
+	        }
 	    }
 	}
 	El.collectorThreadId = setInterval(garbageCollect, 30000);
