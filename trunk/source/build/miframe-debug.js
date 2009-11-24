@@ -4872,7 +4872,7 @@
 
     /** @sourceURL=<mif.js> */
     Ext.provide && Ext.provide('mif');
-})()/* global Ext */
+})();/* global Ext */
 /* Messaging Driver for ux.ManagedIFrame 
  *******************************************************************************
  * This file is distributed on an AS IS BASIS WITHOUT ANY WARRANTY; without even

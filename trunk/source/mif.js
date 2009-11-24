@@ -2776,4 +2776,4 @@
 
     /** @sourceURL=<mif.js> */
     Ext.provide && Ext.provide('mif');
-})()
+})();
