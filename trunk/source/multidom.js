@@ -312,12 +312,7 @@
                     ex = cache[el].el;
                     ex.dom = elm;
                 }else{
-                    ex = (
-                     cache[el] = {
-                        el : new (assertClass(elm))(elm, null, doc),
-                        data : {},
-                        events: {}
-                     }).el;
+                    ex = El.addToCache(new (assertClass(elm))(elm, null, doc));
                 }
                 return ex;
              }else if(el.tagName || Ext.isWindow(el)){ // dom element
@@ -327,12 +322,8 @@
                 if(cache[id] && (ex = cache[id].el)){
                     ex.dom = el;
                 }else{
-                    ex = (
-                     cache[id] = {
-                        el : new (assertClass(el))(el, null, doc),
-                        data : {},
-                        events: {}
-                     }).el;
+                    ex = El.addToCache(new (assertClass(el))(el, null, doc), null, cache); 
+                    el.navigator && (cache[id].skipGC = true);
                 }
                 return ex;
             }else if( el instanceof El ){ 
@@ -363,12 +354,10 @@
                 docEl.id = Ext.id(el,'_doc');
                 docEl._isDoc = true;
 
-                return (
-                     cache[docEl.id] =
-                      { el   : docEl,
-                        data : {},
-                        events: {}
-                      }).el ;
+                El.addToCache( docEl, null, cache);
+                cache[docEl.id].skipGC = true;
+                return docEl;
+                        
              }else if(el.isComposite){
                 return el;
 
@@ -416,6 +405,17 @@
             return (c[key] = value);
         }
     };
+    
+    El.addToCache = function(el, id, cache ){
+	    id = id || el.id;    
+        var C = cache || resolveCache(el);
+	    C[id] = {
+	        el:  el,
+	        data: {},
+	        events: {}
+	    };
+	    return el;
+	};
 
     var propCache = {},
         camelRe = /(-[a-z])/gi,
@@ -1312,10 +1312,15 @@
 	        var eid,
 	            el,
 	            d,
+                o,
                 EC = Ext.elCache;
 	
 	        for(eid in EC){
-	            el = EC[eid].el;
+                o = EC[eid];
+                if(o.skipGC){
+	                continue;
+	            }
+	            el = o.el;
 	            d = el.dom;
 	            // -------------------------------------------------------
 	            // Determining what is garbage:
@@ -1334,9 +1339,7 @@
 	            // directly, but somewhere up the line they have an orphan
 	            // parent.
 	            // -------------------------------------------------------
-	            if (Ext.isDocument(d) || Ext.isWindow(d)) {
-	                continue;
-	            }
+	            
 	            if(!d || !d.parentNode || (!d.offsetParent && !DOC.getElementById(eid))){
 	                if(Ext.enableListenerCollection){
 	                    Ext.EventManager.removeAll(d);
@@ -1556,25 +1559,6 @@
 
     El.Flyweight.prototype = new flyFn();
     El.Flyweight.prototype.isFlyweight = true;
-
-    
-    //Normalize existing document and window listeners
-    (function(){
-	    var c, C = Ext.elCache; 
-        GET(document);
-	    GET(window);
-	    if(c = C['_DOC']){
-            C[document.id].events = c.events;
-            C[document.id].data = c.data;
-            delete C['_DOC'];
-	    }
-        if(c = C['_WINDOW']){
-            C[window.id].events = c.events;
-            C[window.id].data = c.data;
-            delete C['_WINDOW'];
-        }
-        
-    })();
     
     function addListener(el, ename, fn, wrap, scope){
         el = Ext.getDom(el);
@@ -1650,7 +1634,7 @@
         }
         function h(e){
             // prevent errors while unload occurring
-            if(!Ext){// !window[xname]){  ==> can't we do this?
+            if(typeof Ext == 'undefined'){
                 return;
             }
             e = Ext.EventObject.setEvent(e);
