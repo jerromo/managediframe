@@ -43,11 +43,11 @@
 	        },
             
             /**
-	         * Returns true if display is not "none"
+	         * Returns true if display is not "none" or the visibilityCls has not been applied
 	         * @return {Boolean}
 	         */
 	        isDisplayed : function() {
-	            return !(this.hasClass(this.visibilityCls) || this.dom.style[DISPLAY] == NONE);
+	            return !(this.hasClass(this.visibilityCls) || this.isStyle(DISPLAY, NONE));
 	        },
 	        // private
 	        fixDisplay : function(){
@@ -58,13 +58,38 @@
 	
 	        /**
 	         * Checks whether the element is currently visible using both visibility, display, and nosize class properties.
-	         * @return {Boolean} True if the element is currently visible, else false
+             * @param {Boolean} deep (optional) True to walk the dom and see if parent elements are hidden (defaults to false)
+             * @return {Boolean} True if the element is currently visible, else false
 	         */
 	        isVisible : function(deep) {
-	            return this.visible || 
-                   (!this.isStyle(VISIBILITY, HIDDEN) && 
-                       this.visibilityCls ? !this.hasClass(this.visibilityCls) :!this.isStyle(DISPLAY, NONE));
-	        }
+	            var vis = this.visible ||
+				    (!this.isStyle(VISIBILITY, HIDDEN) && 
+                        (this.visibilityCls ? 
+                            !this.hasClass(this.visibilityCls) : 
+                                !this.isStyle(DISPLAY, NONE))
+                      );
+				  
+				  if (deep !== true || !vis) {
+				    return vis;
+				  }
+				
+				  var p = this.dom.parentNode,
+                      bodyRE = /body/i;
+				
+				  while (p && !bodyRE.test(p.tagName)) {
+				    if (!Ext.fly(p, '_isVisible').isVisible()) {
+				      return false;
+				    }
+				    p = p.parentNode;
+				  }
+				  return true;
+
+	        },
+            //Assert isStyle method for Ext 2.x
+            isStyle: supr.isStyle || function(style, val) {
+			    return this.getStyle(style) == val;
+			}
+
 	    };
         
         //Add basic capabilities to the Ext.Element.Flyweight class
