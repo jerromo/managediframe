@@ -575,8 +575,11 @@
             reset : function(src, callback, scope) {
                 
                 this._unHook();
-                var loadMaskOff = false;
-                var s = src, win = this.getWindow();
+                var loadMaskOff = false,
+                    s = src, 
+                    win = this.getWindow(),
+                    O = this._observable;
+                    
                 if(this.loadMask){
                     loadMaskOff = this.loadMask.disabled;
                     this.loadMask.disabled = false;
@@ -586,18 +589,18 @@
                 if(win){
                     this.isReset= true;
                     var cb = callback;
-	                this._observable.addListener('_docload',
+	                O.addListener('_docload',
 	                  function(frame) {
 	                    if(this.loadMask){
 	                        this.loadMask.disabled = loadMaskOff;
 	                    };
 	                    Ext.isFunction(cb) &&  (cb = cb.apply(scope || this, arguments));
-                        this._observable.fireEvent("reset", this);
+                        O.fireEvent("reset", this);
 	                }, this, {single:true});
 	            
                     Ext.isFunction(s) && ( s = src());
                     s = this._targetURI = Ext.isEmpty(s, true)? this.resetUrl: s;
-                    win.location.href = s;
+                    win.location ? (win.location.href = s) : O.fireEvent('_docload', this);
                 }
                 
                 return this;

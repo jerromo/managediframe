@@ -17,9 +17,6 @@
         },{
             text: 'mif.js',
             path: ''
-        },{
-            text: 'mifmsg.js',
-            path: ''
         }]
         
     }],
