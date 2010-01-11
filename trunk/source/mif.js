@@ -1081,7 +1081,7 @@
              */
             loadHandler : function(e, target) {
                 var rstatus = (e && typeof e.type !== 'undefined' ? e.type: this.dom.readyState);
-                //console.log('lh', rstatus, this.isReset, this._frameAction, this.domReady, this.domFired, this.eventsFollowFrameLinks);
+                
                 if (this.eventsFollowFrameLinks || this._frameAction || this.isReset ) {
                                     
 	                switch (rstatus) {
@@ -2116,16 +2116,15 @@
                        delete this.frameMarkup;
                        return;
                     }else{
-                       
-                        if(this.defaultSrc){
+                       if(this.defaultSrc){
                             F.setSrc(this.defaultSrc, false);
-                        }else{
+                       }else{
                             /* If this is a no-action frame, reset it first, then resume parent events
                              * allowing access to a fully reset frame by upstream afterrender/layout events
                              */ 
                             F.reset(null, resumeEvents);
                             return;
-                        }
+                       }
                     }
                     resumeEvents && resumeEvents();
                 }
@@ -2133,10 +2132,8 @@
             
             /** @private */
             beforeDestroy : function() {
-                this.setVisible(false);
                 var F;
                 if(F = this.getFrame()){
-                    F.hide();
                     F.remove();
                     this.frameEl = this.frameShim = null;
                 }
