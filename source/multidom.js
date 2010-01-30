@@ -490,36 +490,12 @@
           var dom = this.dom;
           this.isMasked() && this.unmask();
           if(dom){
-            cleanse && this.cleanse(true, deep);
+            
             Ext.removeNode(dom);
             delete this._context;
             delete this.dom;
           }
         },
-
-        /**
-         * Deep cleansing childNode Removal
-         * @param {Boolean} forceReclean (optional) By default the element
-         * keeps track if it has been cleansed already so
-         * you can call this over and over. However, if you update the element and
-         * need to force a reclean, you can pass true.
-         * @param {Boolean} deep (optional) Perform a deep cleanse of all childNodes as well.
-         */
-        cleanse : function(forceReclean, deep){
-            if(this.isCleansed && forceReclean !== true){
-                return this;
-            }
-            var d = this.dom, n = d.firstChild, nx;
-            while(d && n){
-                 nx = n.nextSibling;
-                 deep && Ext.fly(n, '_cleanser').cleanse(forceReclean, deep);
-                 Ext.removeNode(n);
-                 n = nx;
-             }
-             delete El._flyweights['_cleanser']; //orphan reference cleanup
-             this.isCleansed = true;
-             return this;
-         },
 
          /**
          * Appends the passed element(s) to this element
@@ -1303,6 +1279,70 @@
                 }
             }
             return me;
+        },
+        
+        getViewSize : function(){
+            var doc = this.getDocument(),
+                d = this.dom,
+                isDoc = (d == doc || d == doc.body);
+
+            // If the body, use Ext.lib.Dom
+            if (isDoc) {
+                var extdom = Ext.lib.Dom;
+                return {
+                    width : extdom.getViewWidth(),
+                    height : extdom.getViewHeight()
+                }
+
+            // Else use clientHeight/clientWidth
+            } else {
+                return {
+                    width : d.clientWidth,
+                    height : d.clientHeight
+                }
+            }
+        },
+        /**
+        * <p>Returns the dimensions of the element available to lay content out in.<p>
+        *
+        * getStyleSize utilizes prefers style sizing if present, otherwise it chooses the larger of offsetHeight/clientHeight and offsetWidth/clientWidth.
+        * To obtain the size excluding scrollbars, use getViewSize
+        *
+        * Sizing of the document body is handled at the adapter level which handles special cases for IE and strict modes, etc.
+        */
+
+        getStyleSize : function(){
+            var me = this,
+                w, h,
+                doc = this.getDocument(),
+                d = this.dom,
+                isDoc = (d == doc || d == doc.body),
+                s = d.style;
+
+            // If the body, use Ext.lib.Dom
+            if (isDoc) {
+                var extdom = Ext.lib.Dom;
+                return {
+                    width : extdom.getViewWidth(),
+                    height : extdom.getViewHeight()
+                }
+            }
+            // Use Styles if they are set
+            if(s.width && s.width != 'auto'){
+                w = parseFloat(s.width);
+                if(me.isBorderBox()){
+                   w -= me.getFrameWidth('lr');
+                }
+            }
+            // Use Styles if they are set
+            if(s.height && s.height != 'auto'){
+                h = parseFloat(s.height);
+                if(me.isBorderBox()){
+                   h -= me.getFrameWidth('tb');
+                }
+            }
+            // Use getWidth/getHeight if style not set.
+            return {width: w || me.getWidth(true), height: h || me.getHeight(true)};
         }
     });
     
@@ -1353,17 +1393,16 @@
 	                delete EC[eid];
 	            }
 	        
-            
-		        // Cleanup IE COM Object Hash reference leaks 
-		        if (Ext.isIE) {
-		            var t = {};
-		            for (eid in EC) {
-		                t[eid] = EC[eid];
-		            }
-		            Ext.elCache = Ext._documents[Ext.id(document)] = t;
-	                t = null;
-		        }
             }
+	        // Cleanup IE COM Object Hash reference leaks 
+	        if (Ext.isIE) {
+	            var t = {};
+	            for (eid in EC) {
+	                t[eid] = EC[eid];
+	            }
+	            Ext.elCache = Ext._documents[Ext.id(document)] = t;
+                t = null;
+	        }
 	    }
 	}
     //Restart if enabled
@@ -1530,7 +1569,7 @@
         if(ename == "mousewheel" && el.addEventListener){ // workaround for jQuery
             var args = ["DOMMouseScroll", wrap, false];
             el.addEventListener.apply(el, args);
-            Ext.EventManager.addListener(window, 'unload', function(){
+            Ext.EventManager.addListener(window, 'beforeunload', function(){
                 el.removeEventListener.apply(el, args);
             });
         }
@@ -1687,6 +1726,15 @@
                     if (f.length === 0) {
                         delete elCache[el.id].events[eventName];
                     }
+                    // jQuery workaround that should be removed from Ext Core
+		            if(eventName == "mousewheel" && el.addEventListener && wrap){
+		                el.removeEventListener("DOMMouseScroll", wrap, false);
+		            }
+		
+		            if(eventName == "mousedown" && el == DOC && wrap){ // fix stopped mousedowns on the document
+		                Ext.EventManager.stoppedMouseDownEvent.removeListener(wrap);
+		            }
+                    
                     for (k in elCache[el.id].events) {
                         return false;
                     }
@@ -1695,14 +1743,7 @@
                 }
             }
 
-            // jQuery workaround that should be removed from Ext Core
-            if(eventName == "mousewheel" && el.addEventListener && wrap){
-                el.removeEventListener("DOMMouseScroll", wrap, false);
-            }
-
-            if(eventName == "mousedown" && el == DOC && wrap){ // fix stopped mousedowns on the document
-                Ext.EventManager.stoppedMouseDownEvent.removeListener(wrap);
-            }
+            
         },
 
         /**

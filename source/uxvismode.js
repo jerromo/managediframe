@@ -74,7 +74,7 @@
 				  }
 				
 				  var p = this.dom.parentNode,
-                      bodyRE = /body/i;
+                      bodyRE = /^body/i;
 				
 				  while (p && !bodyRE.test(p.tagName)) {
 				    if (!Ext.fly(p, '_isVisible').isVisible()) {
