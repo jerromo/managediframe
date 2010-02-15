@@ -10,11 +10,11 @@
 
  /**
   * @class multidom
-  * @version 2.0
+  * @version 2.11
   * @license MIT
   * @author Doug Hendricks. Forum ID: <a href="http://extjs.com/forum/member.php?u=8730">hendricd</a>
   * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
-  * @copyright 2007-2009, Active Group, Inc. All rights reserved.
+  * @copyright 2007-2010, Active Group, Inc. All rights reserved.
   * @description [Designed For Ext Core and ExtJs Frameworks (using ext-base adapter only) 3.0 or higher ONLY]
   * The multidom library extends (overloads) Ext Core DOM methods and functions to
   * provide document-targeted access to the documents loaded in external (FRAME/IFRAME)
@@ -25,7 +25,7 @@
   * into any child document without having to load the Core library into the frame's global context.
   * <h3>Custom Element classes.</h3>
   * The Ext.get method is enhanced to support resolution of the custom Ext.Element implementations.
-  * (The ux.ManagedIFrame 2.0 Element class is an example of such a class.)
+  * (The ux.ManagedIFrame 2 Element class is an example of such a class.)
   * <p>For example: If you were retrieving the Ext.Element instance for an IFRAME and the class
   * Ext.Element.IFRAME were defined:
   * <pre><code>Ext.get('myFrame')</pre></code>
@@ -64,7 +64,9 @@
        OPString = OP.toString,
        HTMLDoc = '[object HTMLDocument]';
        
-   if(!Ext.elCache) throw 'Ext Release is not supported';
+   if(!Ext.elCache || parseInt( Ext.version.replace(/\./g,''),10) < 311 ) {
+    alert ('Ext Release '+Ext.version+' is not supported');
+   }
 
    /**
     * @private
@@ -281,7 +283,7 @@
         if (!libFlyweight) {
             libFlyweight = new Ext.Element.Flyweight();
         }
-        libFlyweight.dom = Ext.getDom(el, doc);
+        libFlyweight.dom = Ext.getDom(el, null, doc);
         return libFlyweight;
     }
 
@@ -299,7 +301,7 @@
             Ext.isDocument(doc) || (doc = DOC);
             var ex, elm, id, cache = resolveCache(doc);
             if(typeof el == "string"){ // element id
-                elm = Ext.getDom(el,doc);
+                elm = Ext.getDom(el, null, doc);
                 if(!elm) return null;
                 if(cache[el] && cache[el].el){
                     ex = cache[el].el;
@@ -308,17 +310,7 @@
                     ex = El.addToCache(new (assertClass(elm))(elm, null, doc));
                 }
                 return ex;
-             }else if(el.tagName || Ext.isWindow(el)){ // dom element
-
-                cache = resolveCache(el);
-                id = el.id || (id = Ext.id(el));
-                if(cache[id] && (ex = cache[id].el)){
-                    ex.dom = el;
-                }else{
-                    ex = El.addToCache(new (assertClass(el))(el, null, doc), null, cache); 
-                    el.navigator && (cache[id].skipGC = true);
-                }
-                return ex;
+            
             }else if( el instanceof El ){ 
 
                 cache = resolveCache(el);
@@ -330,6 +322,17 @@
                        )).el = el; // in case it was created directly with Element(), let's cache it
                 }
                 return el;
+                
+            }else if(el.tagName || Ext.isWindow(el)){ // dom element
+                cache = resolveCache(el);
+                id = Ext.id(el);
+                if(cache[id] && (ex = cache[id].el)){
+                    ex.dom = el;
+                }else{
+                    ex = El.addToCache(new (assertClass(el))(el, null, doc), null, cache); 
+                    el.navigator && (cache[id].skipGC = true);
+                }
+                return ex;
 
             }else if(Ext.isDocument(el)){
 
@@ -364,11 +367,32 @@
      /**
       * Ext.getDom to support targeted document contexts
       */
-     getDom : function(el, doc){
-            if(!el){ return null;}
-            var D = doc || DOC;
-            return el.dom ? el.dom : (typeof el == 'string'  && D.getElementById ? D.getElementById(el) : el);
-        },
+     getDom : function(el, strict, doc){
+        var D = doc || DOC;
+        if(!el || !D){
+            return null;
+        }
+        if (el.dom){
+            return el.dom;
+        } else {
+            if (Ext.isString(el)) {
+                var e = D.getElementById(el);
+                // IE returns elements with the 'name' and 'id' attribute.
+                // we do a strict check to return the element with only the id attribute
+                if (e && Ext.isIE && strict) {
+                    if (el == e.getAttribute('id')) {
+                        return e;
+                    } else {
+                        return null;
+                    }
+                }
+                return e;
+            } else {
+                return el;
+            }
+        }
+            
+     },
      /**
      * Returns the current/specified document body as an {@link Ext.Element}.
      * @param {HTMLDocument} doc (optional)
@@ -514,7 +538,7 @@
          * @return {Ext.Element} this
          */
         appendTo: function(el, doc){
-            GETDOM(el, doc || this.getDocument()).appendChild(this.dom);
+            GETDOM(el, false, doc || this.getDocument()).appendChild(this.dom);
             return this;
         },
 
@@ -525,7 +549,7 @@
          * @return {Ext.Element} this
          */
         insertBefore: function(el, doc){
-            (el = GETDOM(el, doc || this.getDocument())).parentNode.insertBefore(this.dom, el);
+            (el = GETDOM(el, false, doc || this.getDocument())).parentNode.insertBefore(this.dom, el);
             return this;
         },
 
@@ -536,7 +560,7 @@
          * @return {Ext.Element} this
          */
         insertAfter: function(el, doc){
-            (el = GETDOM(el, doc || this.getDocument())).parentNode.insertBefore(this.dom, el.nextSibling);
+            (el = GETDOM(el, false, doc || this.getDocument())).parentNode.insertBefore(this.dom, el.nextSibling);
             return this;
         },
 
@@ -579,7 +603,7 @@
         replaceWith: function(el, doc){
             var me = this;
             if(el.nodeType || el.dom || typeof el == 'string'){
-                el = GETDOM(el, doc || me.getDocument());
+                el = GETDOM(el, false, doc || me.getDocument());
                 me.dom.parentNode.insertBefore(el, me.dom);
             }else{
                 el = DH.insertBefore(me.dom, el);
@@ -695,7 +719,7 @@
         
         scrollIntoView : function(container, hscroll){
                 var d = this.getDocument();
-                var c = Ext.getDom(container, d) || Ext.getBody(d).dom;
+                var c = Ext.getDom(container, null, d) || Ext.getBody(d).dom;
                 var el = this.dom;
                 var o = this.getOffsetsTo(c),
                     s = this.getScroll(),
@@ -1223,7 +1247,7 @@
             }
             maxDepth = maxDepth || 50;
             if (isNaN(maxDepth)) {
-                stopEl = Ext.getDom(maxDepth, D);
+                stopEl = Ext.getDom(maxDepth, null, D);
                 maxDepth = Number.MAX_VALUE;
             }
             while(p && p.nodeType == 1 && depth < maxDepth && p != b && p != stopEl){
@@ -1417,7 +1441,7 @@
         getDocument : function(el, accessTest){
           var dom= null;
           try{
-            dom = Ext.getDom(el, null); //will fail if El.dom is non "same-origin" document
+            dom = Ext.getDom(el, null, null); //will fail if El.dom is non "same-origin" document
           }catch(ex){}
 
           var isDoc = Ext.isDocument(dom);
@@ -1510,7 +1534,7 @@
             ELD.getXY || emptyFn,
             function(el, doc) {
 
-                el = Ext.getDom(el, doc);
+                el = Ext.getDom(el, null, doc);
                 var D= this.getDocument(el),
                     bd = D ? (D.body || D.documentElement): null;
 
@@ -1534,7 +1558,7 @@
         var ret = null;
         named = named || '_global';
 
-        if (el = Ext.getDom(el, doc)) {
+        if (el = Ext.getDom(el, null, doc)) {
             (ret = flies[named] = (flies[named] || new El.Flyweight())).dom = el;
             Ext.isDocument(el) && (ret._isDoc = true);
         }
@@ -1566,7 +1590,7 @@
 
         // this is a workaround for jQuery and should somehow be removed from Ext Core in the future
         // without breaking ExtJS.
-        if(ename == "mousewheel" && el.addEventListener){ // workaround for jQuery
+        if(ename == "mousewheel" && el.addEventListener){ 
             var args = ["DOMMouseScroll", wrap, false];
             el.addEventListener.apply(el, args);
             Ext.EventManager.addListener(window, 'beforeunload', function(){
@@ -1717,23 +1741,23 @@
                         }
                         delete fn.tasks;
                     }
-                    wf = wrap = fnc[1];
-                    if (E.extAdapter) {
-                        wf = fnc[3];
+                    wrap = fnc[1];
+                    
+                    E.un(el, eventName, E.extAdapter ? fnc[3] : wrap);
+                    
+                    // jQuery workaround that should be removed from Ext Core
+                    if(eventName == "mousewheel" && el.addEventListener && wrap){
+                        el.removeEventListener("DOMMouseScroll", wrap, false);
                     }
-                    E.un(el, eventName, wf);
+        
+                    if(eventName == "mousedown" && el == DOC && wrap){ // fix stopped mousedowns on the document
+                        Ext.EventManager.stoppedMouseDownEvent.removeListener(wrap);
+                    }
+                    
                     f.splice(i,1);
                     if (f.length === 0) {
                         delete elCache[el.id].events[eventName];
                     }
-                    // jQuery workaround that should be removed from Ext Core
-		            if(eventName == "mousewheel" && el.addEventListener && wrap){
-		                el.removeEventListener("DOMMouseScroll", wrap, false);
-		            }
-		
-		            if(eventName == "mousedown" && el == DOC && wrap){ // fix stopped mousedowns on the document
-		                Ext.EventManager.stoppedMouseDownEvent.removeListener(wrap);
-		            }
                     
                     for (k in elCache[el.id].events) {
                         return false;
@@ -1759,7 +1783,7 @@
                 elCache = resolveCache(el)||{},
                 es = elCache[id] || {},
                 ev = es.events || {},
-                f, i, len, ename, fn, k;
+                f, i, len, ename, fn, k, wrap;
 
             for(ename in ev){
                 if(ev.hasOwnProperty(ename)){
@@ -1779,7 +1803,19 @@
                             }
                             delete fn.tasks;
                         }
-                        E.un(el, ename, E.extAdapter ? fn[3] : fn[1]);
+                        
+                        wrap =  fn[1];
+                        E.un(el, ename, E.extAdapter ? fn[3] : wrap);
+
+                        // jQuery workaround that should be removed from Ext Core
+                        if(el.addEventListener && wrap && ename == "mousewheel"){
+                            el.removeEventListener("DOMMouseScroll", wrap, false);
+                        }
+
+                        // fix stopped mousedowns on the document
+                        if(wrap && el == DOC &&  ename == "mousedown"){
+                            Ext.EventManager.stoppedMouseDownEvent.removeListener(wrap);
+                        }
                     }
                 }
             }

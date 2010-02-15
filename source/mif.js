@@ -1,12 +1,12 @@
 /* global Ext */
 /*
- * Copyright 2007-2009, Active Group, Inc.  All rights reserved.
+ * Copyright 2007-2010, Active Group, Inc.  All rights reserved.
  * ******************************************************************************
  * This file is distributed on an AS IS BASIS WITHOUT ANY WARRANTY; without even
  * the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  * ***********************************************************************************
- * @version 2.1
- * [For Ext 3.1 or higher only]
+ * @version 2.11
+ * [For Ext 3.1.1 or higher only]
  *
  * License: ux.ManagedIFrame, ux.ManagedIFrame.Panel, ux.ManagedIFrame.Portlet, ux.ManagedIFrame.Window  
  * are licensed under the terms of the Open Source GPL 3.0 license:
@@ -61,12 +61,12 @@
  
   //assert multidom support: REQUIRED for Ext 3 or higher!
   if(typeof ELD.getDocument != 'function'){
-     throw "MIF 2.1 requires multidom support" ;
+     alert("MIF 2.1.1 requires multidom support" );
   }
-  //assert Ext 3.0.3 + , SVN
-  if(!Ext.isDefined(Ext.elCache)){
-     throw "MIF 2.1 requires Ext 3.1 or higher." ;
-  }
+  //assert Ext 3.1.1+ 
+  if(!Ext.elCache || parseInt( Ext.version.replace(/\./g,''),10) < 311 ) {
+    alert ('Ext Release '+Ext.version+' is not supported');
+   }
   
   Ext.ns('Ext.ux.ManagedIFrame', 'Ext.ux.plugin');
   
@@ -88,11 +88,11 @@
     /**
      * @class Ext.ux.ManagedIFrame.Element
      * @extends Ext.Element
-     * @version 2.1 
+     * @version 2.1.1 
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a> 
      * @author Doug Hendricks. Forum ID: <a href="http://extjs.com/forum/member.php?u=8730">hendricd</a> 
      * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
-     * @copyright 2007-2009, Active Group, Inc. All rights reserved.
+     * @copyright 2007-2010, Active Group, Inc. All rights reserved.
      * @constructor Create a new Ext.ux.ManagedIFrame.Element directly. 
      * @param {String/HTMLElement} element
      * @param {Boolean} forceNew (optional) By default the constructor checks to see if there is already an instance of this element in the cache and if there is it returns the same instance. This will skip that check (useful for extending this class).
@@ -104,7 +104,7 @@
             constructor : function(element, forceNew, doc ){
                 var d = doc || document;
                 var elCache  = ELD.resolveDocumentCache(d);
-                var dom = Ext.getDom(element, d);
+                var dom = Ext.getDom(element, false, d);
                 if(!dom || !(/^(iframe|frame)/i).test(dom.tagName)) { // invalid id/element
                     return null;
                 }
@@ -256,9 +256,10 @@
 	                    //  Private internal document state events.
 	                 this._observable.addEvents('_docready','_docload');
                  } 
+                 var H = Ext.isIE?'onreadystatechange':'onload';
                  // Hook the Iframes loaded and error state handlers
-                 this.dom[Ext.isIE?'onreadystatechange':'onload'] =
-                    this.dom['onerror'] = this.loadHandler.createDelegate(this);
+                 this.dom[H] = this.loadHandler.createDelegate(this);
+                 this.dom['onerror'] = this.loadHandler.createDelegate(this);
                 
             },
 
@@ -404,8 +405,8 @@
                 var opt = submitCfg || {}, 
                 D = this.getDocument(),
   	            form = Ext.getDom(
-                       opt.form ? opt.form.form || opt.form: null, 
-                    D) || Ext.DomHelper.append(D.body, { 
+                       opt.form ? opt.form.form || opt.form: null, false, D) || 
+                  Ext.DomHelper.append(D.body, { 
                     tag: 'form', 
                     cls : 'x-hidden x-mif-form',
                     encoding : 'multipart/form-data'
@@ -1080,10 +1081,11 @@
              * applicable.
              */
             loadHandler : function(e, target) {
-                var rstatus = (e && typeof e.type !== 'undefined' ? e.type: this.dom.readyState);
+                
+                var rstatus = (this.dom||{}).readyState || (e || {}).type ;
                 
                 if (this.eventsFollowFrameLinks || this._frameAction || this.isReset ) {
-                                    
+                                       
 	                switch (rstatus) {
 	                    case 'domready' : // MIF
                         case 'DOMFrameContentLoaded' :
@@ -1099,8 +1101,9 @@
 	                        break;
 	                    default :
 	                }
+                    this.frameState = rstatus;
                 }
-                this.frameState = rstatus;
+                
             },
 
             /**
@@ -1148,7 +1151,7 @@
              * state, and raise the 'domready' event when applicable.
              */
             checkDOM : function( win) {
-                if ( Ext.isGecko ) { return; }  //Ext.isOpera ||
+                if ( Ext.isGecko ) { return; } 
                 // initialise the counter
                 var n = 0, frame = this, domReady = false,
                     b, l, d, 
@@ -1475,10 +1478,10 @@
 
   /**
    * @class Ext.ux.ManagedIFrame.ComponentAdapter
-   * @version 2.1 
+   * @version 2.1.1 
    * @author Doug Hendricks. doug[always-At]theactivegroup.com
    * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
-   * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
+   * @copyright 2007-2010, Active Group, Inc.  All rights reserved.
    * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
    * @constructor
    * @desc
@@ -1973,10 +1976,10 @@
   /**
    * @class Ext.ux.ManagedIFrame.Component
    * @extends Ext.BoxComponent
-   * @version 2.1 
+   * @version 2.1.1 
    * @author Doug Hendricks. doug[always-At]theactivegroup.com
    * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
-   * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
+   * @copyright 2007-2010, Active Group, Inc.  All rights reserved.
    * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
    * @constructor
    * @base Ext.ux.ManagedIFrame.ComponentAdapter
@@ -2179,10 +2182,10 @@
   /**
    * @class Ext.ux.ManagedIFrame.Panel
    * @extends Ext.Panel
-   * @version 2.1 
+   * @version 2.1.1 
    * @author Doug Hendricks. doug[always-At]theactivegroup.com
    * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
-   * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
+   * @copyright 2007-2010, Active Group, Inc.  All rights reserved.
    * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
    * @constructor
    * @base Ext.ux.ManagedIFrame.ComponentAdapter
@@ -2206,11 +2209,11 @@
     /**
      * @class Ext.ux.ManagedIFrame.Portlet
      * @extends Ext.ux.ManagedIFrame.Panel
-     * @version 2.1 
+     * @version 2.1.1 
      * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a> 
      * @author Doug Hendricks. Forum ID: <a href="http://extjs.com/forum/member.php?u=8730">hendricd</a> 
-     * @copyright 2007-2009, Active Group, Inc. All rights reserved.
+     * @copyright 2007-2010, Active Group, Inc. All rights reserved.
      * @constructor Create a new Ext.ux.ManagedIFramePortlet 
      * @param {Object} config The config object
      */
@@ -2234,10 +2237,10 @@
   /**
    * @class Ext.ux.ManagedIFrame.Window
    * @extends Ext.Window
-   * @version 2.1 
+   * @version 2.1.1 
    * @author Doug Hendricks. 
    * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
-   * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
+   * @copyright 2007-2010, Active Group, Inc.  All rights reserved.
    * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
    * @constructor
    * @base Ext.ux.ManagedIFrame.ComponentAdapter
@@ -2262,11 +2265,11 @@
     /**
      * @class Ext.ux.ManagedIFrame.Updater
      * @extends Ext.Updater
-     * @version 2.1 
+     * @version 2.1.1 
      * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a> 
      * @author Doug Hendricks. Forum ID: <a href="http://extjs.com/forum/member.php?u=8730">hendricd</a> 
-     * @copyright 2007-2009, Active Group, Inc. All rights reserved.
+     * @copyright 2007-2010, Active Group, Inc. All rights reserved.
      * @constructor Creates a new Ext.ux.ManagedIFrame.Updater instance.
      * @param {String/Object} el The element to bind the Updater instance to.
      */
@@ -2311,10 +2314,10 @@
     /**
      * @class Ext.ux.ManagedIFrame.CSS
      * Stylesheet interface object
-     * @version 2.1 
+     * @version 2.1.1 
      * @author Doug Hendricks. doug[always-At]theactivegroup.com
      * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
-     * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
+     * @copyright 2007-2010, Active Group, Inc.  All rights reserved.
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
      */
     Ext.ux.ManagedIFrame.CSS = function(hostDocument) {
@@ -2550,10 +2553,10 @@
 
     /**
      * @class Ext.ux.ManagedIFrame.Manager
-     * @version 2.1 
+     * @version 2.1.1 
 	 * @author Doug Hendricks. doug[always-At]theactivegroup.com
 	 * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
-	 * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
+	 * @copyright 2007-2010, Active Group, Inc.  All rights reserved.
 	 * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
 	 * @singleton
      */
@@ -2725,11 +2728,11 @@
      * Internal Error class for ManagedIFrame Components
 	 * @class Ext.ux.ManagedIFrame.Error
      * @extends Ext.Error
-     * @version 2.1 
+     * @version 2.1.1 
      * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a> 
      * @author Doug Hendricks. Forum ID: <a href="http://extjs.com/forum/member.php?u=8730">hendricd</a> 
-     * @copyright 2007-2009, Active Group, Inc. All rights reserved.
+     * @copyright 2007-2010, Active Group, Inc. All rights reserved.
 	 * @constructor 
      * @param {String} message
      * @param {Mixed} arg optional argument to include in Error object.
