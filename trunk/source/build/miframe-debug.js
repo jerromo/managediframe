@@ -277,11 +277,11 @@
 
  /**
   * @class multidom
-  * @version 2.0
+  * @version 2.11
   * @license MIT
   * @author Doug Hendricks. Forum ID: <a href="http://extjs.com/forum/member.php?u=8730">hendricd</a>
   * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
-  * @copyright 2007-2009, Active Group, Inc. All rights reserved.
+  * @copyright 2007-2010, Active Group, Inc. All rights reserved.
   * @description [Designed For Ext Core and ExtJs Frameworks (using ext-base adapter only) 3.0 or higher ONLY]
   * The multidom library extends (overloads) Ext Core DOM methods and functions to
   * provide document-targeted access to the documents loaded in external (FRAME/IFRAME)
@@ -292,7 +292,7 @@
   * into any child document without having to load the Core library into the frame's global context.
   * <h3>Custom Element classes.</h3>
   * The Ext.get method is enhanced to support resolution of the custom Ext.Element implementations.
-  * (The ux.ManagedIFrame 2.0 Element class is an example of such a class.)
+  * (The ux.ManagedIFrame 2 Element class is an example of such a class.)
   * <p>For example: If you were retrieving the Ext.Element instance for an IFRAME and the class
   * Ext.Element.IFRAME were defined:
   * <pre><code>Ext.get('myFrame')</pre></code>
@@ -331,7 +331,9 @@
        OPString = OP.toString,
        HTMLDoc = '[object HTMLDocument]';
        
-   if(!Ext.elCache) throw 'Ext Release is not supported';
+   if(!Ext.elCache || parseInt( Ext.version.replace(/\./g,''),10) < 311 ) {
+    alert ('Ext Release '+Ext.version+' is not supported');
+   }
 
    /**
     * @private
@@ -548,7 +550,7 @@
         if (!libFlyweight) {
             libFlyweight = new Ext.Element.Flyweight();
         }
-        libFlyweight.dom = Ext.getDom(el, doc);
+        libFlyweight.dom = Ext.getDom(el, null, doc);
         return libFlyweight;
     }
 
@@ -566,7 +568,7 @@
             Ext.isDocument(doc) || (doc = DOC);
             var ex, elm, id, cache = resolveCache(doc);
             if(typeof el == "string"){ // element id
-                elm = Ext.getDom(el,doc);
+                elm = Ext.getDom(el, null, doc);
                 if(!elm) return null;
                 if(cache[el] && cache[el].el){
                     ex = cache[el].el;
@@ -575,17 +577,7 @@
                     ex = El.addToCache(new (assertClass(elm))(elm, null, doc));
                 }
                 return ex;
-             }else if(el.tagName || Ext.isWindow(el)){ // dom element
-
-                cache = resolveCache(el);
-                id = el.id || (id = Ext.id(el));
-                if(cache[id] && (ex = cache[id].el)){
-                    ex.dom = el;
-                }else{
-                    ex = El.addToCache(new (assertClass(el))(el, null, doc), null, cache); 
-                    el.navigator && (cache[id].skipGC = true);
-                }
-                return ex;
+            
             }else if( el instanceof El ){ 
 
                 cache = resolveCache(el);
@@ -597,6 +589,17 @@
                        )).el = el; // in case it was created directly with Element(), let's cache it
                 }
                 return el;
+                
+            }else if(el.tagName || Ext.isWindow(el)){ // dom element
+                cache = resolveCache(el);
+                id = Ext.id(el);
+                if(cache[id] && (ex = cache[id].el)){
+                    ex.dom = el;
+                }else{
+                    ex = El.addToCache(new (assertClass(el))(el, null, doc), null, cache); 
+                    el.navigator && (cache[id].skipGC = true);
+                }
+                return ex;
 
             }else if(Ext.isDocument(el)){
 
@@ -631,11 +634,32 @@
      /**
       * Ext.getDom to support targeted document contexts
       */
-     getDom : function(el, doc){
-            if(!el){ return null;}
-            var D = doc || DOC;
-            return el.dom ? el.dom : (typeof el == 'string'  && D.getElementById ? D.getElementById(el) : el);
-        },
+     getDom : function(el, strict, doc){
+        var D = doc || DOC;
+        if(!el || !D){
+            return null;
+        }
+        if (el.dom){
+            return el.dom;
+        } else {
+            if (Ext.isString(el)) {
+                var e = D.getElementById(el);
+                // IE returns elements with the 'name' and 'id' attribute.
+                // we do a strict check to return the element with only the id attribute
+                if (e && Ext.isIE && strict) {
+                    if (el == e.getAttribute('id')) {
+                        return e;
+                    } else {
+                        return null;
+                    }
+                }
+                return e;
+            } else {
+                return el;
+            }
+        }
+            
+     },
      /**
      * Returns the current/specified document body as an {@link Ext.Element}.
      * @param {HTMLDocument} doc (optional)
@@ -781,7 +805,7 @@
          * @return {Ext.Element} this
          */
         appendTo: function(el, doc){
-            GETDOM(el, doc || this.getDocument()).appendChild(this.dom);
+            GETDOM(el, false, doc || this.getDocument()).appendChild(this.dom);
             return this;
         },
 
@@ -792,7 +816,7 @@
          * @return {Ext.Element} this
          */
         insertBefore: function(el, doc){
-            (el = GETDOM(el, doc || this.getDocument())).parentNode.insertBefore(this.dom, el);
+            (el = GETDOM(el, false, doc || this.getDocument())).parentNode.insertBefore(this.dom, el);
             return this;
         },
 
@@ -803,7 +827,7 @@
          * @return {Ext.Element} this
          */
         insertAfter: function(el, doc){
-            (el = GETDOM(el, doc || this.getDocument())).parentNode.insertBefore(this.dom, el.nextSibling);
+            (el = GETDOM(el, false, doc || this.getDocument())).parentNode.insertBefore(this.dom, el.nextSibling);
             return this;
         },
 
@@ -846,7 +870,7 @@
         replaceWith: function(el, doc){
             var me = this;
             if(el.nodeType || el.dom || typeof el == 'string'){
-                el = GETDOM(el, doc || me.getDocument());
+                el = GETDOM(el, false, doc || me.getDocument());
                 me.dom.parentNode.insertBefore(el, me.dom);
             }else{
                 el = DH.insertBefore(me.dom, el);
@@ -962,7 +986,7 @@
         
         scrollIntoView : function(container, hscroll){
                 var d = this.getDocument();
-                var c = Ext.getDom(container, d) || Ext.getBody(d).dom;
+                var c = Ext.getDom(container, null, d) || Ext.getBody(d).dom;
                 var el = this.dom;
                 var o = this.getOffsetsTo(c),
                     s = this.getScroll(),
@@ -1490,7 +1514,7 @@
             }
             maxDepth = maxDepth || 50;
             if (isNaN(maxDepth)) {
-                stopEl = Ext.getDom(maxDepth, D);
+                stopEl = Ext.getDom(maxDepth, null, D);
                 maxDepth = Number.MAX_VALUE;
             }
             while(p && p.nodeType == 1 && depth < maxDepth && p != b && p != stopEl){
@@ -1684,7 +1708,7 @@
         getDocument : function(el, accessTest){
           var dom= null;
           try{
-            dom = Ext.getDom(el, null); //will fail if El.dom is non "same-origin" document
+            dom = Ext.getDom(el, null, null); //will fail if El.dom is non "same-origin" document
           }catch(ex){}
 
           var isDoc = Ext.isDocument(dom);
@@ -1777,7 +1801,7 @@
             ELD.getXY || emptyFn,
             function(el, doc) {
 
-                el = Ext.getDom(el, doc);
+                el = Ext.getDom(el, null, doc);
                 var D= this.getDocument(el),
                     bd = D ? (D.body || D.documentElement): null;
 
@@ -1801,7 +1825,7 @@
         var ret = null;
         named = named || '_global';
 
-        if (el = Ext.getDom(el, doc)) {
+        if (el = Ext.getDom(el, null, doc)) {
             (ret = flies[named] = (flies[named] || new El.Flyweight())).dom = el;
             Ext.isDocument(el) && (ret._isDoc = true);
         }
@@ -1833,7 +1857,7 @@
 
         // this is a workaround for jQuery and should somehow be removed from Ext Core in the future
         // without breaking ExtJS.
-        if(ename == "mousewheel" && el.addEventListener){ // workaround for jQuery
+        if(ename == "mousewheel" && el.addEventListener){ 
             var args = ["DOMMouseScroll", wrap, false];
             el.addEventListener.apply(el, args);
             Ext.EventManager.addListener(window, 'beforeunload', function(){
@@ -1984,23 +2008,23 @@
                         }
                         delete fn.tasks;
                     }
-                    wf = wrap = fnc[1];
-                    if (E.extAdapter) {
-                        wf = fnc[3];
+                    wrap = fnc[1];
+                    
+                    E.un(el, eventName, E.extAdapter ? fnc[3] : wrap);
+                    
+                    // jQuery workaround that should be removed from Ext Core
+                    if(eventName == "mousewheel" && el.addEventListener && wrap){
+                        el.removeEventListener("DOMMouseScroll", wrap, false);
                     }
-                    E.un(el, eventName, wf);
+        
+                    if(eventName == "mousedown" && el == DOC && wrap){ // fix stopped mousedowns on the document
+                        Ext.EventManager.stoppedMouseDownEvent.removeListener(wrap);
+                    }
+                    
                     f.splice(i,1);
                     if (f.length === 0) {
                         delete elCache[el.id].events[eventName];
                     }
-                    // jQuery workaround that should be removed from Ext Core
-		            if(eventName == "mousewheel" && el.addEventListener && wrap){
-		                el.removeEventListener("DOMMouseScroll", wrap, false);
-		            }
-		
-		            if(eventName == "mousedown" && el == DOC && wrap){ // fix stopped mousedowns on the document
-		                Ext.EventManager.stoppedMouseDownEvent.removeListener(wrap);
-		            }
                     
                     for (k in elCache[el.id].events) {
                         return false;
@@ -2026,7 +2050,7 @@
                 elCache = resolveCache(el)||{},
                 es = elCache[id] || {},
                 ev = es.events || {},
-                f, i, len, ename, fn, k;
+                f, i, len, ename, fn, k, wrap;
 
             for(ename in ev){
                 if(ev.hasOwnProperty(ename)){
@@ -2046,7 +2070,19 @@
                             }
                             delete fn.tasks;
                         }
-                        E.un(el, ename, E.extAdapter ? fn[3] : fn[1]);
+                        
+                        wrap =  fn[1];
+                        E.un(el, ename, E.extAdapter ? fn[3] : wrap);
+
+                        // jQuery workaround that should be removed from Ext Core
+                        if(el.addEventListener && wrap && ename == "mousewheel"){
+                            el.removeEventListener("DOMMouseScroll", wrap, false);
+                        }
+
+                        // fix stopped mousedowns on the document
+                        if(wrap && el == DOC &&  ename == "mousedown"){
+                            Ext.EventManager.stoppedMouseDownEvent.removeListener(wrap);
+                        }
                     }
                 }
             }
@@ -2098,13 +2134,13 @@
     Ext.provide && Ext.provide('multidom');
  })();/* global Ext */
 /*
- * Copyright 2007-2009, Active Group, Inc.  All rights reserved.
+ * Copyright 2007-2010, Active Group, Inc.  All rights reserved.
  * ******************************************************************************
  * This file is distributed on an AS IS BASIS WITHOUT ANY WARRANTY; without even
  * the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  * ***********************************************************************************
- * @version 2.1
- * [For Ext 3.1 or higher only]
+ * @version 2.11
+ * [For Ext 3.1.1 or higher only]
  *
  * License: ux.ManagedIFrame, ux.ManagedIFrame.Panel, ux.ManagedIFrame.Portlet, ux.ManagedIFrame.Window  
  * are licensed under the terms of the Open Source GPL 3.0 license:
@@ -2159,12 +2195,12 @@
  
   //assert multidom support: REQUIRED for Ext 3 or higher!
   if(typeof ELD.getDocument != 'function'){
-     throw "MIF 2.1 requires multidom support" ;
+     alert("MIF 2.1.1 requires multidom support" );
   }
-  //assert Ext 3.0.3 + , SVN
-  if(!Ext.isDefined(Ext.elCache)){
-     throw "MIF 2.1 requires Ext 3.1 or higher." ;
-  }
+  //assert Ext 3.1.1+ 
+  if(!Ext.elCache || parseInt( Ext.version.replace(/\./g,''),10) < 311 ) {
+    alert ('Ext Release '+Ext.version+' is not supported');
+   }
   
   Ext.ns('Ext.ux.ManagedIFrame', 'Ext.ux.plugin');
   
@@ -2186,11 +2222,11 @@
     /**
      * @class Ext.ux.ManagedIFrame.Element
      * @extends Ext.Element
-     * @version 2.1 
+     * @version 2.1.1 
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a> 
      * @author Doug Hendricks. Forum ID: <a href="http://extjs.com/forum/member.php?u=8730">hendricd</a> 
      * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
-     * @copyright 2007-2009, Active Group, Inc. All rights reserved.
+     * @copyright 2007-2010, Active Group, Inc. All rights reserved.
      * @constructor Create a new Ext.ux.ManagedIFrame.Element directly. 
      * @param {String/HTMLElement} element
      * @param {Boolean} forceNew (optional) By default the constructor checks to see if there is already an instance of this element in the cache and if there is it returns the same instance. This will skip that check (useful for extending this class).
@@ -2202,7 +2238,7 @@
             constructor : function(element, forceNew, doc ){
                 var d = doc || document;
                 var elCache  = ELD.resolveDocumentCache(d);
-                var dom = Ext.getDom(element, d);
+                var dom = Ext.getDom(element, false, d);
                 if(!dom || !(/^(iframe|frame)/i).test(dom.tagName)) { // invalid id/element
                     return null;
                 }
@@ -2354,9 +2390,10 @@
 	                    //  Private internal document state events.
 	                 this._observable.addEvents('_docready','_docload');
                  } 
+                 var H = Ext.isIE?'onreadystatechange':'onload';
                  // Hook the Iframes loaded and error state handlers
-                 this.dom[Ext.isIE?'onreadystatechange':'onload'] =
-                    this.dom['onerror'] = this.loadHandler.createDelegate(this);
+                 this.dom[H] = this.loadHandler.createDelegate(this);
+                 this.dom['onerror'] = this.loadHandler.createDelegate(this);
                 
             },
 
@@ -2502,8 +2539,8 @@
                 var opt = submitCfg || {}, 
                 D = this.getDocument(),
   	            form = Ext.getDom(
-                       opt.form ? opt.form.form || opt.form: null, 
-                    D) || Ext.DomHelper.append(D.body, { 
+                       opt.form ? opt.form.form || opt.form: null, false, D) || 
+                  Ext.DomHelper.append(D.body, { 
                     tag: 'form', 
                     cls : 'x-hidden x-mif-form',
                     encoding : 'multipart/form-data'
@@ -3178,10 +3215,11 @@
              * applicable.
              */
             loadHandler : function(e, target) {
-                var rstatus = (e && typeof e.type !== 'undefined' ? e.type: this.dom.readyState);
+                
+                var rstatus = (this.dom||{}).readyState || (e || {}).type ;
                 
                 if (this.eventsFollowFrameLinks || this._frameAction || this.isReset ) {
-                                    
+                                       
 	                switch (rstatus) {
 	                    case 'domready' : // MIF
                         case 'DOMFrameContentLoaded' :
@@ -3197,8 +3235,9 @@
 	                        break;
 	                    default :
 	                }
+                    this.frameState = rstatus;
                 }
-                this.frameState = rstatus;
+                
             },
 
             /**
@@ -3246,7 +3285,7 @@
              * state, and raise the 'domready' event when applicable.
              */
             checkDOM : function( win) {
-                if ( Ext.isGecko ) { return; }  //Ext.isOpera ||
+                if ( Ext.isGecko ) { return; } 
                 // initialise the counter
                 var n = 0, frame = this, domReady = false,
                     b, l, d, 
@@ -3573,10 +3612,10 @@
 
   /**
    * @class Ext.ux.ManagedIFrame.ComponentAdapter
-   * @version 2.1 
+   * @version 2.1.1 
    * @author Doug Hendricks. doug[always-At]theactivegroup.com
    * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
-   * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
+   * @copyright 2007-2010, Active Group, Inc.  All rights reserved.
    * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
    * @constructor
    * @desc
@@ -4071,10 +4110,10 @@
   /**
    * @class Ext.ux.ManagedIFrame.Component
    * @extends Ext.BoxComponent
-   * @version 2.1 
+   * @version 2.1.1 
    * @author Doug Hendricks. doug[always-At]theactivegroup.com
    * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
-   * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
+   * @copyright 2007-2010, Active Group, Inc.  All rights reserved.
    * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
    * @constructor
    * @base Ext.ux.ManagedIFrame.ComponentAdapter
@@ -4277,10 +4316,10 @@
   /**
    * @class Ext.ux.ManagedIFrame.Panel
    * @extends Ext.Panel
-   * @version 2.1 
+   * @version 2.1.1 
    * @author Doug Hendricks. doug[always-At]theactivegroup.com
    * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
-   * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
+   * @copyright 2007-2010, Active Group, Inc.  All rights reserved.
    * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
    * @constructor
    * @base Ext.ux.ManagedIFrame.ComponentAdapter
@@ -4304,11 +4343,11 @@
     /**
      * @class Ext.ux.ManagedIFrame.Portlet
      * @extends Ext.ux.ManagedIFrame.Panel
-     * @version 2.1 
+     * @version 2.1.1 
      * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a> 
      * @author Doug Hendricks. Forum ID: <a href="http://extjs.com/forum/member.php?u=8730">hendricd</a> 
-     * @copyright 2007-2009, Active Group, Inc. All rights reserved.
+     * @copyright 2007-2010, Active Group, Inc. All rights reserved.
      * @constructor Create a new Ext.ux.ManagedIFramePortlet 
      * @param {Object} config The config object
      */
@@ -4332,10 +4371,10 @@
   /**
    * @class Ext.ux.ManagedIFrame.Window
    * @extends Ext.Window
-   * @version 2.1 
+   * @version 2.1.1 
    * @author Doug Hendricks. 
    * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
-   * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
+   * @copyright 2007-2010, Active Group, Inc.  All rights reserved.
    * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
    * @constructor
    * @base Ext.ux.ManagedIFrame.ComponentAdapter
@@ -4360,11 +4399,11 @@
     /**
      * @class Ext.ux.ManagedIFrame.Updater
      * @extends Ext.Updater
-     * @version 2.1 
+     * @version 2.1.1 
      * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a> 
      * @author Doug Hendricks. Forum ID: <a href="http://extjs.com/forum/member.php?u=8730">hendricd</a> 
-     * @copyright 2007-2009, Active Group, Inc. All rights reserved.
+     * @copyright 2007-2010, Active Group, Inc. All rights reserved.
      * @constructor Creates a new Ext.ux.ManagedIFrame.Updater instance.
      * @param {String/Object} el The element to bind the Updater instance to.
      */
@@ -4409,10 +4448,10 @@
     /**
      * @class Ext.ux.ManagedIFrame.CSS
      * Stylesheet interface object
-     * @version 2.1 
+     * @version 2.1.1 
      * @author Doug Hendricks. doug[always-At]theactivegroup.com
      * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
-     * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
+     * @copyright 2007-2010, Active Group, Inc.  All rights reserved.
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
      */
     Ext.ux.ManagedIFrame.CSS = function(hostDocument) {
@@ -4648,10 +4687,10 @@
 
     /**
      * @class Ext.ux.ManagedIFrame.Manager
-     * @version 2.1 
+     * @version 2.1.1 
 	 * @author Doug Hendricks. doug[always-At]theactivegroup.com
 	 * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
-	 * @copyright 2007-2009, Active Group, Inc.  All rights reserved.
+	 * @copyright 2007-2010, Active Group, Inc.  All rights reserved.
 	 * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a>
 	 * @singleton
      */
@@ -4823,11 +4862,11 @@
      * Internal Error class for ManagedIFrame Components
 	 * @class Ext.ux.ManagedIFrame.Error
      * @extends Ext.Error
-     * @version 2.1 
+     * @version 2.1.1 
      * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a> 
      * @author Doug Hendricks. Forum ID: <a href="http://extjs.com/forum/member.php?u=8730">hendricd</a> 
-     * @copyright 2007-2009, Active Group, Inc. All rights reserved.
+     * @copyright 2007-2010, Active Group, Inc. All rights reserved.
 	 * @constructor 
      * @param {String} message
      * @param {Mixed} arg optional argument to include in Error object.
