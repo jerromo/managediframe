@@ -511,6 +511,7 @@
       */
 
         remove : function(cleanse, deep){
+            
           var dom = this.dom;
           this.isMasked() && this.unmask();
           if(dom){
@@ -1590,7 +1591,7 @@
 
         // this is a workaround for jQuery and should somehow be removed from Ext Core in the future
         // without breaking ExtJS.
-        if(ename == "mousewheel" && el.addEventListener){ 
+        if(el.addEventListener && ename == "mousewheel" ){ 
             var args = ["DOMMouseScroll", wrap, false];
             el.addEventListener.apply(el, args);
             Ext.EventManager.addListener(window, 'beforeunload', function(){
@@ -1723,7 +1724,7 @@
             el && Ext.get(el);
             var elCache = el ? resolveCache(el) : {},
                 f = el && ((elCache[el.id]||{events:{}}).events)[eventName] || [],
-                wrap, i, l, k, wf, len, fnc;
+                wrap, i, l, k, len, fnc;
 
             for (i = 0, len = f.length; i < len; i++) {
                 /* 0 = Original Function,
@@ -1742,15 +1743,14 @@
                         delete fn.tasks;
                     }
                     wrap = fnc[1];
-                    
                     E.un(el, eventName, E.extAdapter ? fnc[3] : wrap);
                     
                     // jQuery workaround that should be removed from Ext Core
-                    if(eventName == "mousewheel" && el.addEventListener && wrap){
+                    if(wrap && eventName == "mousewheel" && el.addEventListener ){
                         el.removeEventListener("DOMMouseScroll", wrap, false);
                     }
         
-                    if(eventName == "mousedown" && el == DOC && wrap){ // fix stopped mousedowns on the document
+                    if(wrap && eventName == "mousedown" && el == DOC){ // fix stopped mousedowns on the document
                         Ext.EventManager.stoppedMouseDownEvent.removeListener(wrap);
                     }
                     
@@ -1808,7 +1808,7 @@
                         E.un(el, ename, E.extAdapter ? fn[3] : wrap);
 
                         // jQuery workaround that should be removed from Ext Core
-                        if(el.addEventListener && wrap && ename == "mousewheel"){
+                        if(wrap && el.addEventListener && ename == "mousewheel"){
                             el.removeEventListener("DOMMouseScroll", wrap, false);
                         }
 
