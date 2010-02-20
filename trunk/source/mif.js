@@ -360,9 +360,7 @@
               *
               */
             eventsFollowFrameLinks   : true,
-
-            /** @private */
-            _domCache      : null,
+           
 
             /**
              * Removes the FRAME from the DOM and deletes it from the cache
@@ -737,7 +735,7 @@
              */
             fly : function(el, named) {
                 var doc = this.getFrameDocument();
-                return doc ? Ext.fly(el,named, doc) : null;
+                return doc ? Ext.fly(el, named, doc) : null;
             },
 
             /**
@@ -821,16 +819,6 @@
              /** @private : clear all event listeners and Element cache */
             _unHook : function() {
                 if (this._hooked) {
-                    var id, el, c = this._domCache;
-                    if(c){
-                      for ( id in c ) {
-                        el = c[id].el;
-                        el && el.removeAllListeners && el.removeAllListeners();
-                        el && (c[id].el = el = null);
-                        delete c[id].data;
-                        delete c[id];
-                      }
-                    }
                     
                     this._windowContext && (this._windowContext.hostMIF = null);
                     this._windowContext = null;
@@ -844,8 +832,7 @@
                         removeListener(Ext.isIE ? w : this.getFrameDocument(), 'scroll', p);
                     }
                 }
-                MIM._flyweights = {};
-                this._domCache = null;
+                
                 ELD.clearDocumentCache && ELD.clearDocumentCache(this.id);
                 this.CSS = this.CSS ? this.CSS.destroy() : null;
                 this.domFired = this._frameAction = this.domReady = this._hooked = false;
@@ -867,16 +854,11 @@
                             || this.dom.contentDocument
                             || window.frames[this.dom.name].document || null;
                 } catch (gdEx) {
-                    this._domCache = null;
                     
                     ELD.clearDocumentCache && ELD.clearDocumentCache(this.id);
                     return false; // signifies probable access restriction
                 }
                 doc = (doc && Ext.isFunction(ELD.getDocument)) ? ELD.getDocument(doc,true) : doc;
-                
-                if(doc){
-                  this._domCache || (this._domCache = ELD.resolveDocumentCache(doc, this.id));
-                }
                 
                 return doc;
             },
@@ -2638,14 +2620,10 @@
             },
 
             /** @private */
-            _flyweights : {},
-
-            /** @private */
             destroy : function() {
                 if (document.addEventListener && !Ext.isOpera) {
                       window.removeEventListener("DOMFrameContentLoaded", this._DOMFrameReadyHandler , false);
                 }
-                delete this._flyweights;
             }
         };
         // for Gecko and any who might support it later 
