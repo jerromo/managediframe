@@ -102,9 +102,10 @@
     Ext.ux.ManagedIFrame.Element = Ext.extend(Ext.Element, {
                          
             constructor : function(element, forceNew, doc ){
-                var d = doc || document;
-                var elCache  = ELD.resolveDocumentCache(d);
-                var dom = Ext.getDom(element, false, d);
+                var d = doc || document,
+                	elCache  = ELD.resolveDocumentCache(d),
+                    dom = Ext.getDom(element, false, d);
+                
                 if(!dom || !(/^(iframe|frame)/i).test(dom.tagName)) { // invalid id/element
                     return null;
                 }
@@ -1474,7 +1475,7 @@
    Ext.ux.ManagedIFrame.ComponentAdapter.prototype = {
        
         /** @property */
-        version : 2.01,
+        version : 2.11,
         
         /**
          * @cfg {String} defaultSrc the default src property assigned to the Managed Frame when the component is rendered.

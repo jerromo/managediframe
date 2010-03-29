@@ -273,7 +273,8 @@
      * Determine Ext.Element[tagName] or Ext.Element (default)
      */
     var assertClass = function(el){
-
+    	
+    	return El;
         return El[(el.tagName || '-').toUpperCase()] || El;
 
       };
@@ -1571,7 +1572,7 @@
 
     // dom is optional
     El.Flyweight = function(dom){
-        this.dom = dom;
+       this.dom = dom;
     };
 
     El.Flyweight.prototype = new flyFn();
