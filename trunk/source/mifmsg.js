@@ -4,7 +4,7 @@
  * This file is distributed on an AS IS BASIS WITHOUT ANY WARRANTY; without even
  * the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  * ***********************************************************************************
- * @version 2.0
+ * @version 2.1
  *
  * License: ux.ManagedIFrame, ux.ManagedIFramePanel, ux.ManagedIFrameWindow  
  * are licensed under the terms of the Open Source GPL 3.0 license:
@@ -16,6 +16,7 @@
  * Donations are welcomed: http://donate.theactivegroup.com
  *
  */ 
+
  
 (function(){
       
@@ -206,6 +207,8 @@
     Ext.each(['Component', 'Panel', 'Window'], 
 	      function(K){
            MIF[K] && Ext.override(MIF[K] ,{
+        	   
+        	   disableMessaging : true,
                 /**
                  * @memberOf Ext.ux.ManagedIFrame.ComponentAdapter
                  * @param {Mixed} message The message payload.  The payload can be any supported JS type. 
