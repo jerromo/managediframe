@@ -4,7 +4,7 @@
  * This file is distributed on an AS IS BASIS WITHOUT ANY WARRANTY; without even
  * the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  * ***********************************************************************************
- * @version 2.1
+ * @version 2.1.2
  *
  * License: ux.ManagedIFrame, ux.ManagedIFramePanel, ux.ManagedIFrameWindow  
  * are licensed under the terms of the Open Source GPL 3.0 license:
@@ -181,24 +181,19 @@
          * @name postMessage
          * @memberOf Ext.ux.ManagedIFrame.Element
          * @param {String} message Required message payload (String only)
-         * @param {Array} ports Optional array of ports/channels. 
          * @param {String} origin Optional domain designation of the sender (defaults
          * to document.domain). 
          * <p>Notes:  on IE8, this action is synchronous.
          */
-        postMessage : function(message /* , [ports] [,origin] */){
-            var d, w=this.getWindow();
+        postMessage : function(message, origin, target ){
+            var d, w = target || this.getWindow();
             if(w && !this.disableMessaging){
-	            var args =[String(message || '')].concat(
-	                Array.prototype.slice.call(arguments,1)
-	            );
-                //assert an origin (last argument)
-                var L = args.length;
-                var origin = L > 1 ? args[L-1] : undefined;
-                typeof origin === 'string' || args.push(document.domain);
+                var L = location;
+	            origin = origin || '*'; //(L.protocol + '//' + L.hostname); 
 	            //Opera may implement postMessage on the document   
 	            var post = w.postMessage || (d = this.getDocument()? d.postMessage : null);
-	            post && post.apply(w, args);
+                console.log('sending', message, origin);
+	            if(post)post(message, origin);
             }
         }
         
@@ -233,19 +228,24 @@
             
             var be = e.browserEvent;
             //Copy the relevant message members to the Ext.event
-            be && Ext.apply(e,{
-               origin      : be.origin,
-               data        : be.data,
-               lastEventId : be.lastEventId,
-               source      : be.source
-            });
+            
+            console.log(be, be.source, e.getTarget());
             try {
-                var $frame ;
-                if ($frame = be && be.source ? be.source.frameElement.id : null){
-                    $frame = this.getFrameById($frame);
-                    $frame && $frame._observable.fireEvent('message', $frame, e);
+                var mif ;
+                if (mif = (be && be.source && be.source.frameElement) ? be.source.frameElement.ownerCt : null){
+                    if(mif){
+                        e.stopEvent();
+                        be && Ext.apply(e,{
+			               origin      : be.origin,
+			               data        : be.data,
+			               lastEventId : be.lastEventId,
+			               source      : be.source,
+                           returnValue : false
+			            });
+                        mif && mif._observable.fireEvent('message', mif, e);
+                    }
                 }
-            } catch (rhEx) {} 
+            } catch (rhEx) {console.warn(rhEx)} 
         },
         /**
          * @private

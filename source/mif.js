@@ -5,7 +5,7 @@
  * This file is distributed on an AS IS BASIS WITHOUT ANY WARRANTY; without even
  * the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  * ***********************************************************************************
- * @version 2.11
+ * @version 2.1.2
  * [For Ext 3.1.1 or higher only]
  *
  * License: ux.ManagedIFrame, ux.ManagedIFrame.Panel, ux.ManagedIFrame.Portlet, ux.ManagedIFrame.Window  
@@ -88,7 +88,7 @@
     /**
      * @class Ext.ux.ManagedIFrame.Element
      * @extends Ext.Element
-     * @version 2.1.1 
+     * @version 2.1.2 
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a> 
      * @author Doug Hendricks. Forum ID: <a href="http://extjs.com/forum/member.php?u=8730">hendricd</a> 
      * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
@@ -1461,7 +1461,7 @@
 
   /**
    * @class Ext.ux.ManagedIFrame.ComponentAdapter
-   * @version 2.1.1 
+   * @version 2.1.2 
    * @author Doug Hendricks. doug[always-At]theactivegroup.com
    * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
    * @copyright 2007-2010, Active Group, Inc.  All rights reserved.
@@ -1475,15 +1475,13 @@
    Ext.ux.ManagedIFrame.ComponentAdapter.prototype = {
        
         /** @property */
-        version : 2.11,
+        version : 2.12,
         
         /**
          * @cfg {String} defaultSrc the default src property assigned to the Managed Frame when the component is rendered.
          * @default null
          */
         defaultSrc : null,
-        
-        title      : '&#160;',
         
         /**
          * @cfg {String} unsupportedText Text to display when the IFRAMES/FRAMESETS are disabled by the browser.
@@ -1959,7 +1957,7 @@
   /**
    * @class Ext.ux.ManagedIFrame.Component
    * @extends Ext.BoxComponent
-   * @version 2.1.1 
+   * @version 2.1.2 
    * @author Doug Hendricks. doug[always-At]theactivegroup.com
    * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
    * @copyright 2007-2010, Active Group, Inc.  All rights reserved.
@@ -2038,7 +2036,12 @@
                               );
                         Ext.get(F.loadMask.maskEl) && Ext.get(F.loadMask.maskEl).addClass('ux-mif-mask-target');
                     }
-                    F.disableMessaging = Ext.value(frCfg.disableMessaging, true);
+                    
+                    Ext.apply(F,{
+                        disableMessaging : Ext.value(this.disableMessaging, true),
+                        focusOnLoad      : Ext.value(this.focusOnLoad, Ext.isIE)
+                    });
+                    
                     F._observable && 
                         (this.relayTarget || this).relayEvents(F._observable, frameEvents.concat(this._msgTagHandlers || []));
                     delete this.contentEl;
@@ -2152,6 +2155,7 @@
           defaultSrc  : Ext.value(config.defaultSrc , this.defaultSrc),
          frameMarkup  : Ext.value(config.html , this.html),
             loadMask  : Ext.value(config.loadMask , this.loadMask),
+    disableMessaging  : Ext.value(config.disableMessaging, this.disableMessaging),
          focusOnLoad  : Ext.value(config.focusOnLoad, this.focusOnLoad),
           frameConfig : Ext.value(config.frameConfig || config.frameCfg , this.frameConfig),
           relayTarget : this  //direct relay of events to the parent component
@@ -2165,7 +2169,7 @@
   /**
    * @class Ext.ux.ManagedIFrame.Panel
    * @extends Ext.Panel
-   * @version 2.1.1 
+   * @version 2.1.2 
    * @author Doug Hendricks. doug[always-At]theactivegroup.com
    * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
    * @copyright 2007-2010, Active Group, Inc.  All rights reserved.
@@ -2192,7 +2196,7 @@
     /**
      * @class Ext.ux.ManagedIFrame.Portlet
      * @extends Ext.ux.ManagedIFrame.Panel
-     * @version 2.1.1 
+     * @version 2.1.2 
      * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a> 
      * @author Doug Hendricks. Forum ID: <a href="http://extjs.com/forum/member.php?u=8730">hendricd</a> 
@@ -2220,7 +2224,7 @@
   /**
    * @class Ext.ux.ManagedIFrame.Window
    * @extends Ext.Window
-   * @version 2.1.1 
+   * @version 2.1.2 
    * @author Doug Hendricks. 
    * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
    * @copyright 2007-2010, Active Group, Inc.  All rights reserved.
@@ -2248,7 +2252,7 @@
     /**
      * @class Ext.ux.ManagedIFrame.Updater
      * @extends Ext.Updater
-     * @version 2.1.1 
+     * @version 2.1.2 
      * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a> 
      * @author Doug Hendricks. Forum ID: <a href="http://extjs.com/forum/member.php?u=8730">hendricd</a> 
@@ -2297,7 +2301,7 @@
     /**
      * @class Ext.ux.ManagedIFrame.CSS
      * Stylesheet interface object
-     * @version 2.1.1 
+     * @version 2.1.2 
      * @author Doug Hendricks. doug[always-At]theactivegroup.com
      * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
      * @copyright 2007-2010, Active Group, Inc.  All rights reserved.
@@ -2536,7 +2540,7 @@
 
     /**
      * @class Ext.ux.ManagedIFrame.Manager
-     * @version 2.1.1 
+     * @version 2.1.2 
 	 * @author Doug Hendricks. doug[always-At]theactivegroup.com
 	 * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
 	 * @copyright 2007-2010, Active Group, Inc.  All rights reserved.
@@ -2707,7 +2711,7 @@
      * Internal Error class for ManagedIFrame Components
 	 * @class Ext.ux.ManagedIFrame.Error
      * @extends Ext.Error
-     * @version 2.1.1 
+     * @version 2.1.2 
      * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a> 
      * @author Doug Hendricks. Forum ID: <a href="http://extjs.com/forum/member.php?u=8730">hendricd</a> 

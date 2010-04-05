@@ -433,7 +433,7 @@
          */
         isDocument : function(el, testOrigin){
             var elm = el ? el.dom || el : null;
-            var test = OPString.apply(elm) == HTMLDoc || (elm && elm.nodeType == 9);
+            var test = elm && ((OPString.apply(elm) == HTMLDoc) || (elm && elm.nodeType == 9));
             if(test && testOrigin){
                 try{
                     test = !!elm.location;
@@ -540,7 +540,8 @@
      * Determine Ext.Element[tagName] or Ext.Element (default)
      */
     var assertClass = function(el){
-
+    	
+    	return El;
         return El[(el.tagName || '-').toUpperCase()] || El;
 
       };
@@ -564,8 +565,10 @@
 
       get : El.get = function(el, doc){         //document targeted
             if(!el ){ return null; }
-
+            var isDoc = Ext.isDocument(el); 
+            
             Ext.isDocument(doc) || (doc = DOC);
+            
             var ex, elm, id, cache = resolveCache(doc);
             if(typeof el == "string"){ // element id
                 elm = Ext.getDom(el, null, doc);
@@ -578,30 +581,7 @@
                 }
                 return ex;
             
-            }else if( el instanceof El ){ 
-
-                cache = resolveCache(el);
-                el.dom = el.getDocument().getElementById(el.id) || el.dom; // refresh dom element in case no longer valid,
-                                                              // catch case where it hasn't been appended
-                if(el.dom){
-                    (cache[el.id] || 
-                       (cache[el.id] = {data : {}, events : {}}
-                       )).el = el; // in case it was created directly with Element(), let's cache it
-                }
-                return el;
-                
-            }else if(el.tagName || Ext.isWindow(el)){ // dom element
-                cache = resolveCache(el);
-                id = Ext.id(el);
-                if(cache[id] && (ex = cache[id].el)){
-                    ex.dom = el;
-                }else{
-                    ex = El.addToCache(new (assertClass(el))(el, null, doc), null, cache); 
-                    el.navigator && (cache[id].skipGC = true);
-                }
-                return ex;
-
-            }else if(Ext.isDocument(el)){
+            }else if(isDoc){
 
                 if(!Ext.isDocument(el, true)){ return false; }  //is it accessible
                 cache = resolveCache(el);
@@ -621,7 +601,36 @@
                 cache[docEl.id].skipGC = true;
                 return docEl;
                         
-             }else if(el.isComposite){
+             }else if( el instanceof El ){ 
+                
+                // refresh dom element in case no longer valid,
+                // catch case where it hasn't been appended
+                 
+                if(el.dom){
+                    el.id = Ext.id(el.dom);
+                }else{
+                    el.dom = el.id ? Ext.getDom(el.id, true) : null;
+                }
+                if(el.dom){
+	                cache = resolveCache(el);
+	                (cache[el.id] || 
+	                       (cache[el.id] = {data : {}, events : {}}
+	                       )).el = el; // in case it was created directly with Element(), let's cache it
+                }
+                return el;
+                
+            }else if(el.tagName || Ext.isWindow(el)){ // dom element
+                cache = resolveCache(el);
+                id = Ext.id(el);
+                if(cache[id] && (ex = cache[id].el)){
+                    ex.dom = el;
+                }else{
+                    ex = El.addToCache(new (assertClass(el))(el, null, doc), null, cache); 
+                    el.navigator && (cache[id].skipGC = true);
+                }
+                return ex;
+
+            }else if(el.isComposite){
                 return el;
 
             }else if(Ext.isArray(el)){
@@ -700,17 +709,24 @@
 	    };
 	    return el;
 	};
+    
+    /*
+     * Add new Visibility Mode to element (sets height and width to 0px instead of display:none )
+     */
+    El.NOSIZE = 3;
 
     var propCache = {},
         camelRe = /(-[a-z])/gi,
         camelFn = function(m, a){ return a.charAt(1).toUpperCase(); },
         opacityRe = /alpha\(opacity=(.*)\)/i,
         trimRe = /^\s+|\s+$/g,
-        marginrightRe = /marginRight/,
+        marginRightRe = /marginRight/,
         propFloat = Ext.isIE ? 'styleFloat' : 'cssFloat',
         view = DOC.defaultView,
         VISMODE = 'visibilityMode',
         ELDISPLAY = El.DISPLAY,
+        ELVISIBILITY = El.VISIBILITY,
+        ELNOSIZE = El.NOSIZE,
         ORIGINALDISPLAY = 'originalDisplay',
         PADDING = "padding",
         MARGIN = "margin",
@@ -724,8 +740,11 @@
         OPACITY = "opacity",
         VISIBILITY = "visibility",
         DISPLAY = "display",
+        OFFSETS = "offsets",
+        NOSIZE  = "nosize",
         HIDDEN = "hidden",
         NONE = "none", 
+        ISVISIBLE = 'isVisible',
         ISCLIPPED = 'isClipped',
         OVERFLOW = 'overflow',
         OVERFLOWX = 'overflow-x',
@@ -908,21 +927,72 @@
             return this;
         },
         
+        
+        /**
+         * Checks whether the element is currently visible using both visibility and display properties.
+         * @return {Boolean} True if the element is currently visible, else false
+         */
+        isVisible : function() {
+            return this.visible || Ext.value( data(this.dom, ISVISIBLE ), 
+               !this.isStyle(VISIBILITY, HIDDEN) && !this.isStyle(DISPLAY, NONE));
+        },
+        
         /**
          * Sets the visibility of the element (see details). If the visibilityMode is set to Element.DISPLAY, it will use
          * the display property to hide the element, otherwise it uses visibility. The default is to hide and show using the visibility property.
          * @param {Boolean} visible Whether the element is visible
-         * @param {Boolean/Object} animate (optional) True for the default animation, or a standard Element animation config object
+         * @param {Boolean/Object} animate (optional) True for the default animation, or a standard Element animation config object, or one of four
+         *         possible hideMode strings: 'display, visibility, offsets, nosize'
          * @return {Ext.Element} this
          */
         setVisible : function(visible, animate){
             var me = this,
                 dom = me.dom,
-                isDisplay = getVisMode(this.dom) == ELDISPLAY;
-                
+                isDisplay, isVisibility, isOffsets, isNosize;
+            
+            // hideMode string override
+            if (typeof animate == 'string'){
+                isDisplay = animate == DISPLAY;
+                isVisibility = animate == VISIBILITY;
+                isOffsets = animate == OFFSETS;
+                isNosize  = animate == NOSIZE;
+                animate = false;
+            } else {
+                var visMode = getVisMode(dom);
+                isDisplay = visMode == ELDISPLAY;
+                isVisibility = visMode == ELVISIBILITY;
+                isNosize = visMode == ELNOSIZE;
+            }
+            
             if (!animate || !me.anim) {
-                if(isDisplay){
+                
+                if (isNosize){
+                    if (!visible){
+                        me.hideModeStyles = {
+                            width: me.getWidth(),
+                            height: me.getHeight()
+                        };
+
+                        me.applyStyles({width: '0px', height: '0px'});
+                    } else {
+                        me.applyStyles(me.hideModeStyles || {width: 'auto', height: 'auto'});
+                    }
+                   
+                } else if (isDisplay){
                     me.setDisplayed(visible);
+                    
+                } else if (isOffsets){
+                    if (!visible){
+                        me.hideModeStyles = {
+                            position: me.getStyle('position'),
+                            top: me.getStyle('top'),
+                            left: me.getStyle('left')
+                        };
+                        me.applyStyles({position: 'absolute', top: '-10000px', left: '-10000px'});
+                    } else {
+                        me.applyStyles(me.hideModeStyles || {position: '', top: '', left: ''});
+                    }
+                
                 }else{
                     me.fixDisplay();
                     dom.style.visibility = visible ? "visible" : HIDDEN;
@@ -945,6 +1015,7 @@
                              }
                         });
             }
+            data(dom, ISVISIBLE, visible);
             return me;
         },
         /**
@@ -954,6 +1025,7 @@
          */
         setDisplayed : function(value) {            
             if(typeof value == "boolean"){
+               data(this.dom, ISVISIBLE, value);
                value = value ? getDisplay(this.dom) : NONE;
             }
             this.setStyle(DISPLAY, value);
@@ -963,13 +1035,15 @@
         // private
         fixDisplay : function(){
             var me = this;
+           
             if(me.isStyle(DISPLAY, NONE)){
                 me.setStyle(VISIBILITY, HIDDEN);
-                me.setStyle(DISPLAY, getDisplay(this.dom)); // first try reverting to default
+                me.setStyle(DISPLAY, getDisplay(me.dom)); // first try reverting to default
                 if(me.isStyle(DISPLAY, NONE)){ // if that fails, default to block
                     me.setStyle(DISPLAY, "block");
                 }
             }
+            
         },
         
         /**
@@ -1071,20 +1145,20 @@
 
                     if(!el || !el.style) return null;
                     prop = chkCache(prop);
-                    // Fix bug caused by this: https://bugs.webkit.org/show_bug.cgi?id=13343
-                    if(wk && marginrightRe.test(prop)){
-                        display = this.getStyle(DISPLAY);
-                        el.style.display = 'inline-block';
-                    }
+                    
                     out =  (v = el.style[prop]) ? v :
                            (cs = view.getComputedStyle(el, '')) ? cs[prop] : null;
-                     // Webkit returns rgb values for transparent.
-                    if(wk){
-                        if(out == 'rgba(0, 0, 0, 0)'){
-                            out = 'transparent';
-                        }else if(display){
-                            el.style.display = display;
-                        }
+                           
+                    // Fix bug caused by this: https://bugs.webkit.org/show_bug.cgi?id=13343
+                    if(wk && marginRightRe.test(prop) && out != '0px'){
+                        display = this.getStyle('display');
+                        el.style.display = 'inline-block';
+                        out = view.getComputedStyle(el, '');
+                        el.style.display = display;
+                    }
+                    // Webkit returns rgb values for transparent.
+                    if(wk && out == 'rgba(0, 0, 0, 0)'){
+                        out = 'transparent';
                     }
                     return out;
                 } :
@@ -1838,7 +1912,7 @@
 
     // dom is optional
     El.Flyweight = function(dom){
-        this.dom = dom;
+       this.dom = dom;
     };
 
     El.Flyweight.prototype = new flyFn();
@@ -2139,7 +2213,7 @@
  * This file is distributed on an AS IS BASIS WITHOUT ANY WARRANTY; without even
  * the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  * ***********************************************************************************
- * @version 2.11
+ * @version 2.1.2
  * [For Ext 3.1.1 or higher only]
  *
  * License: ux.ManagedIFrame, ux.ManagedIFrame.Panel, ux.ManagedIFrame.Portlet, ux.ManagedIFrame.Window  
@@ -2222,7 +2296,7 @@
     /**
      * @class Ext.ux.ManagedIFrame.Element
      * @extends Ext.Element
-     * @version 2.1.1 
+     * @version 2.1.2 
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a> 
      * @author Doug Hendricks. Forum ID: <a href="http://extjs.com/forum/member.php?u=8730">hendricd</a> 
      * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
@@ -2236,9 +2310,10 @@
     Ext.ux.ManagedIFrame.Element = Ext.extend(Ext.Element, {
                          
             constructor : function(element, forceNew, doc ){
-                var d = doc || document;
-                var elCache  = ELD.resolveDocumentCache(d);
-                var dom = Ext.getDom(element, false, d);
+                var d = doc || document,
+                	elCache  = ELD.resolveDocumentCache(d),
+                    dom = Ext.getDom(element, false, d);
+                
                 if(!dom || !(/^(iframe|frame)/i).test(dom.tagName)) { // invalid id/element
                     return null;
                 }
@@ -3594,7 +3669,7 @@
 
   /**
    * @class Ext.ux.ManagedIFrame.ComponentAdapter
-   * @version 2.1.1 
+   * @version 2.1.2 
    * @author Doug Hendricks. doug[always-At]theactivegroup.com
    * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
    * @copyright 2007-2010, Active Group, Inc.  All rights reserved.
@@ -3608,15 +3683,13 @@
    Ext.ux.ManagedIFrame.ComponentAdapter.prototype = {
        
         /** @property */
-        version : 2.01,
+        version : 2.12,
         
         /**
          * @cfg {String} defaultSrc the default src property assigned to the Managed Frame when the component is rendered.
          * @default null
          */
         defaultSrc : null,
-        
-        title      : '&#160;',
         
         /**
          * @cfg {String} unsupportedText Text to display when the IFRAMES/FRAMESETS are disabled by the browser.
@@ -4092,7 +4165,7 @@
   /**
    * @class Ext.ux.ManagedIFrame.Component
    * @extends Ext.BoxComponent
-   * @version 2.1.1 
+   * @version 2.1.2 
    * @author Doug Hendricks. doug[always-At]theactivegroup.com
    * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
    * @copyright 2007-2010, Active Group, Inc.  All rights reserved.
@@ -4171,7 +4244,12 @@
                               );
                         Ext.get(F.loadMask.maskEl) && Ext.get(F.loadMask.maskEl).addClass('ux-mif-mask-target');
                     }
-                    F.disableMessaging = Ext.value(frCfg.disableMessaging, true);
+                    
+                    Ext.apply(F,{
+                        disableMessaging : Ext.value(this.disableMessaging, true),
+                        focusOnLoad      : Ext.value(this.focusOnLoad, Ext.isIE)
+                    });
+                    
                     F._observable && 
                         (this.relayTarget || this).relayEvents(F._observable, frameEvents.concat(this._msgTagHandlers || []));
                     delete this.contentEl;
@@ -4285,6 +4363,7 @@
           defaultSrc  : Ext.value(config.defaultSrc , this.defaultSrc),
          frameMarkup  : Ext.value(config.html , this.html),
             loadMask  : Ext.value(config.loadMask , this.loadMask),
+    disableMessaging  : Ext.value(config.disableMessaging, this.disableMessaging),
          focusOnLoad  : Ext.value(config.focusOnLoad, this.focusOnLoad),
           frameConfig : Ext.value(config.frameConfig || config.frameCfg , this.frameConfig),
           relayTarget : this  //direct relay of events to the parent component
@@ -4298,7 +4377,7 @@
   /**
    * @class Ext.ux.ManagedIFrame.Panel
    * @extends Ext.Panel
-   * @version 2.1.1 
+   * @version 2.1.2 
    * @author Doug Hendricks. doug[always-At]theactivegroup.com
    * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
    * @copyright 2007-2010, Active Group, Inc.  All rights reserved.
@@ -4325,7 +4404,7 @@
     /**
      * @class Ext.ux.ManagedIFrame.Portlet
      * @extends Ext.ux.ManagedIFrame.Panel
-     * @version 2.1.1 
+     * @version 2.1.2 
      * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a> 
      * @author Doug Hendricks. Forum ID: <a href="http://extjs.com/forum/member.php?u=8730">hendricd</a> 
@@ -4353,7 +4432,7 @@
   /**
    * @class Ext.ux.ManagedIFrame.Window
    * @extends Ext.Window
-   * @version 2.1.1 
+   * @version 2.1.2 
    * @author Doug Hendricks. 
    * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
    * @copyright 2007-2010, Active Group, Inc.  All rights reserved.
@@ -4381,7 +4460,7 @@
     /**
      * @class Ext.ux.ManagedIFrame.Updater
      * @extends Ext.Updater
-     * @version 2.1.1 
+     * @version 2.1.2 
      * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a> 
      * @author Doug Hendricks. Forum ID: <a href="http://extjs.com/forum/member.php?u=8730">hendricd</a> 
@@ -4430,7 +4509,7 @@
     /**
      * @class Ext.ux.ManagedIFrame.CSS
      * Stylesheet interface object
-     * @version 2.1.1 
+     * @version 2.1.2 
      * @author Doug Hendricks. doug[always-At]theactivegroup.com
      * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
      * @copyright 2007-2010, Active Group, Inc.  All rights reserved.
@@ -4669,7 +4748,7 @@
 
     /**
      * @class Ext.ux.ManagedIFrame.Manager
-     * @version 2.1.1 
+     * @version 2.1.2 
 	 * @author Doug Hendricks. doug[always-At]theactivegroup.com
 	 * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
 	 * @copyright 2007-2010, Active Group, Inc.  All rights reserved.
@@ -4840,7 +4919,7 @@
      * Internal Error class for ManagedIFrame Components
 	 * @class Ext.ux.ManagedIFrame.Error
      * @extends Ext.Error
-     * @version 2.1.1 
+     * @version 2.1.2 
      * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a> 
      * @author Doug Hendricks. Forum ID: <a href="http://extjs.com/forum/member.php?u=8730">hendricd</a> 
