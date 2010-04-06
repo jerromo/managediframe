@@ -1922,7 +1922,7 @@
         el = Ext.getDom(el);
         if(!el){ return; }
 
-        var id = Ext.get(el).id,
+        var id = Ext.id(el),
             es = (resolveCache(el)[id]||{}).events || {},
             wfn;
 
@@ -2091,7 +2091,7 @@
                         el.removeEventListener("DOMMouseScroll", wrap, false);
                     }
         
-                    if(wrap && eventName == "mousedown" && el == DOC){ // fix stopped mousedowns on the document
+                    if(wrap && eventName == "mousedown" && Ext.isDocument(el)){ // fix stopped mousedowns on the document
                         Ext.EventManager.stoppedMouseDownEvent.removeListener(wrap);
                     }
                     
@@ -2154,7 +2154,7 @@
                         }
 
                         // fix stopped mousedowns on the document
-                        if(wrap && el == DOC &&  ename == "mousedown"){
+                        if(wrap && Ext.isDocument(el) &&  ename == "mousedown"){
                             Ext.EventManager.stoppedMouseDownEvent.removeListener(wrap);
                         }
                     }
