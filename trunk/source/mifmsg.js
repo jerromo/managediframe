@@ -41,7 +41,7 @@
 	        return o;
 	    };
 
-        window.sendMessage = function(message, tag, origin) {
+        window.sendMessage = function(message, tag, domain) {
             var MIF;
             if (MIF = arguments.callee.manager) {
                 if (message._fromHost) {
@@ -68,7 +68,8 @@
                     message = {
                         type : 'message',
                         data : message,
-                        domain : origin || document.domain,
+                        domain : domain || document.domain,
+                        origin : location.protocol + '//' + location.hostname,
                         uri : document.documentURI,
                         source : window,
                         tag : tag ? String(tag).toLowerCase() : null
@@ -154,24 +155,25 @@
          * @param {String} origin Optional domain designation of the sender (defaults
          * to document.domain).
          */
-        sendMessage : function(message, tag, origin) {
-            var win;
+        sendMessage : function(message, tag, domain) {
+            var win, L = location;
             if (this.domWritable() && (win = this.getWindow())) {
                 // support MIF frame-to-frame messaging relay
                 tag || (tag = message.tag || '');
                 tag = tag.toLowerCase();
+                domain = domain || document.domain;
                 message = Ext.applyIf(message.data ? message : {
                             data : message
                         }, {
                             type : 'message',
-                            domain : origin || document.domain,
-                            origin : origin || document.domain,
+                            domain : domain,
+                            origin : L.protocol + '\/\/' + L.hostname,
                             uri : document.documentURI,
                             source : window,
                             tag : tag || null,
                             _fromHost : this
                         });
-                return win.sendMessage ? win.sendMessage.call(null, message, tag, origin) : undefined;
+                return win.sendMessage ? win.sendMessage.call(null, message, tag, domain) : undefined;
             }
             return;
         },
@@ -188,12 +190,9 @@
         postMessage : function(message, origin, target ){
             var d, w = target || this.getWindow();
             if(w && !this.disableMessaging){
-                var L = location;
-	            origin = origin || '*'; //(L.protocol + '//' + L.hostname); 
-	            //Opera may implement postMessage on the document   
-	            var post = w.postMessage || (d = this.getDocument()? d.postMessage : null);
-                console.log('sending', message, origin);
-	            if(post)post(message, origin);
+	            origin = origin ||  location.protocol + '\/\/' + location.hostname;
+                message = Ext.isObject(message) || Ext.isArray(message) ? Ext.encode(message) : message;
+	            w.postMessage && w.postMessage(message, origin);
             }
         }
         
@@ -228,8 +227,6 @@
             
             var be = e.browserEvent;
             //Copy the relevant message members to the Ext.event
-            
-            console.log(be, be.source, e.getTarget());
             try {
                 var mif ;
                 if (mif = (be && be.source && be.source.frameElement) ? be.source.frameElement.ownerCt : null){
@@ -239,13 +236,12 @@
 			               origin      : be.origin,
 			               data        : be.data,
 			               lastEventId : be.lastEventId,
-			               source      : be.source,
-                           returnValue : false
+			               source      : be.source
 			            });
                         mif && mif._observable.fireEvent('message', mif, e);
                     }
                 }
-            } catch (rhEx) {console.warn(rhEx)} 
+            } catch (rhEx) {} 
         },
         /**
          * @private
