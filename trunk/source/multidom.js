@@ -81,17 +81,9 @@
     var resolveCache = ELD.resolveDocumentCache = function(el, cacheId){
         var doc = GETDOC(el),
             c = Ext.isDocument(doc) ? Ext.id(doc) : cacheId,
-            cache = Ext._documents[c] || null, d, win;
-
-         //see if the document instance is managed by FRAME
-         if(!cache && doc && (win = doc.parentWindow || doc.defaultView)){  //Is it a frame document
-              if(d = win.frameElement){
-                   c = d.id || d.name;  //the id of the frame is the cacheKey
-                }
-         }
-         return cache ||
-            Ext._documents[c] ||
-            (c ? Ext._documents[c] = {}: null);
+            cache = Ext._documents[c] || null;
+         
+         return cache || (c ? Ext._documents[c] = {}: null);
      },
      clearCache = ELD.clearDocumentCache = function(cacheId){
        delete  Ext._documents[cacheId];
@@ -100,12 +92,11 @@
    El.addMethods || ( El.addMethods = function(ov){ Ext.apply(El.prototype, ov||{}); });
    
    Ext.removeNode =  function(n){
-         var dom = n ? n.dom || n : null;
-         if(dom && dom.tagName != 'BODY'){
-            var el, elc, elCache = resolveCache(dom), parent;
+         var dom = n ? n.dom || n : null,
+             el, elc, elCache = resolveCache(dom), parent;
 
             //clear out any references if found in the El.cache(s)
-            if((elc = elCache[dom.id]) && (el = elc.el) ){
+            if(dom && (elc = elCache[dom.id]) && (el = elc.el) ){
                 if(el.dom){
                     Ext.enableNestedListenerRemoval ? Evm.purgeElement(el.dom, true) : Evm.removeAll(el.dom);
                 }
@@ -114,9 +105,11 @@
                 delete el._context;
                 el = null;
             }
-            (parent = dom.parentElement || dom.parentNode) && parent.removeChild(dom);
-            dom = null;
-         }
+            //No removal for window, documents, or bodies
+            if(dom && !dom.navigator && !Ext.isDocument(dom) && dom.tagName != 'BODY'){
+                (parent = dom.parentElement || dom.parentNode) && parent.removeChild(dom);
+            }
+            dom = parent = null;
     };
 
      var overload = function(pfn, fn ){
@@ -329,9 +322,7 @@
                 docEl.dom = el;
                 docEl.id = Ext.id(el,'_doc');
                 docEl._isDoc = true;
-
                 El.addToCache( docEl, null, cache);
-                cache[docEl.id].skipGC = true;
                 return docEl;
                         
              }else if( el instanceof El ){ 
@@ -359,7 +350,6 @@
                     ex.dom = el;
                 }else{
                     ex = El.addToCache(new (assertClass(el))(el, null, doc), null, cache); 
-                    el.navigator && (cache[id].skipGC = true);
                 }
                 return ex;
 
@@ -433,20 +423,30 @@
     };
     
     El.addToCache = function(el, id, cache ){
-	    id = id || el.id;    
+	    id = id || Ext.id(el);    
         var C = cache || resolveCache(el);
 	    C[id] = {
 	        el:  el,
 	        data: {},
 	        events: {}
 	    };
+        (el.getElementById || el.navigator) && (C[id].skipGC = true);
 	    return el;
 	};
+    
+    El.removeFromCache = function(el, cache){
+        if(el && el.id){
+            var C = cache || resolveCache(el);
+            delete C[el.id];
+        }
+    };
     
     /*
      * Add new Visibility Mode to element (sets height and width to 0px instead of display:none )
      */
-    El.NOSIZE = 3;
+    El.ASCLASS = 3;
+    
+    El.visibilityCls = 'x-hide-nosize';
 
     var propCache = {},
         camelRe = /(-[a-z])/gi,
@@ -459,7 +459,7 @@
         VISMODE = 'visibilityMode',
         ELDISPLAY = El.DISPLAY,
         ELVISIBILITY = El.VISIBILITY,
-        ELNOSIZE = El.NOSIZE,
+        ELASCLASS = El.ASCLASS,
         ORIGINALDISPLAY = 'originalDisplay',
         PADDING = "padding",
         MARGIN = "margin",
@@ -474,7 +474,7 @@
         VISIBILITY = "visibility",
         DISPLAY = "display",
         OFFSETS = "offsets",
-        NOSIZE  = "nosize",
+        ASCLASS  = "asclass",
         HIDDEN = "hidden",
         NONE = "none", 
         ISVISIBLE = 'isVisible',
@@ -505,7 +505,7 @@
         getVisMode = function(dom){
             var m = data(dom, VISMODE);
             if(m === undefined){
-                data(dom, VISMODE, m = 1)
+                data(dom, VISMODE, m = El.prototype.visibilityMode)
             }
             return m;
         };
@@ -534,7 +534,6 @@
           var dom = this.dom;
           this.isMasked() && this.unmask();
           if(dom){
-            
             Ext.removeNode(dom);
             delete this._context;
             delete this.dom;
@@ -670,49 +669,42 @@
                !this.isStyle(VISIBILITY, HIDDEN) && !this.isStyle(DISPLAY, NONE));
         },
         
+        //visibilityMode : El.DISPLAY = 3,
+        
         /**
          * Sets the visibility of the element (see details). If the visibilityMode is set to Element.DISPLAY, it will use
          * the display property to hide the element, otherwise it uses visibility. The default is to hide and show using the visibility property.
          * @param {Boolean} visible Whether the element is visible
          * @param {Boolean/Object} animate (optional) True for the default animation, or a standard Element animation config object, or one of four
-         *         possible hideMode strings: 'display, visibility, offsets, nosize'
+         *         possible hideMode strings: 'display, visibility, offsets, asclass'
          * @return {Ext.Element} this
          */
         setVisible : function(visible, animate){
             var me = this,
                 dom = me.dom,
-                isDisplay, isVisibility, isOffsets, isNosize;
+                isDisplay, isVisibility, isOffsets, isClass;
             
             // hideMode string override
             if (typeof animate == 'string'){
                 isDisplay = animate == DISPLAY;
                 isVisibility = animate == VISIBILITY;
                 isOffsets = animate == OFFSETS;
-                isNosize  = animate == NOSIZE;
+                isClass  = animate == ASCLASS;
                 animate = false;
             } else {
                 var visMode = getVisMode(dom);
                 isDisplay = visMode == ELDISPLAY;
                 isVisibility = visMode == ELVISIBILITY;
-                isNosize = visMode == ELNOSIZE;
+                isClass = visMode == ELASCLASS;
             }
             
             if (!animate || !me.anim) {
-                
-                if (isNosize){
-                    if (!visible){
-                        me.hideModeStyles = {
-                            width: me.getWidth(),
-                            height: me.getHeight()
-                        };
-
-                        me.applyStyles({width: '0px', height: '0px'});
-                    } else {
-                        me.applyStyles(me.hideModeStyles || {width: 'auto', height: 'auto'});
-                    }
-                   
+               
+                if (isClass){
+                    me[visible?'removeClass':'addClass'](me.visibilityCls || El.visibilityCls);
+                    
                 } else if (isDisplay){
-                    me.setDisplayed(visible);
+                    return me.setDisplayed(visible);
                     
                 } else if (isOffsets){
                     if (!visible){
@@ -724,6 +716,7 @@
                         me.applyStyles({position: 'absolute', top: '-10000px', left: '-10000px'});
                     } else {
                         me.applyStyles(me.hideModeStyles || {position: '', top: '', left: ''});
+                        delete me.hideModeStyles;
                     }
                 
                 }else{
@@ -743,12 +736,14 @@
                         'easeIn',
                         function(){
                              if(!visible){
-                                 dom.style[isDisplay ? DISPLAY : VISIBILITY] = (isDisplay) ? NONE : HIDDEN;                     
-                                 Ext.fly(dom).setOpacity(1);
+                                 isClass ? 
+                                   me.addClass(me.visibilityCls || El.visibilityCls) :
+                                    dom.style[isDisplay ? DISPLAY : VISIBILITY] = (isDisplay) ? NONE : HIDDEN;                     
+                                 me.setOpacity(1);
                              }
                         });
             }
-            data(dom, ISVISIBLE, visible);
+            data(dom, ISVISIBLE, visible);  //set logical visibility state
             return me;
         },
         /**
@@ -756,10 +751,17 @@
          * @param {Mixed} value Boolean value to display the element using its default display, or a string to set the display directly.
          * @return {Ext.Element} this
          */
-        setDisplayed : function(value) {            
+        setDisplayed : function(value) {
+            var dom = this.dom,
+                visMode = getVisMode(dom);
+            
             if(typeof value == "boolean"){
+               
+               if(visMode == El.ASCLASS){
+                  return this.setVisible(value, ASCLASS);
+               }
                data(this.dom, ISVISIBLE, value);
-               value = value ? getDisplay(this.dom) : NONE;
+               value = value ? getDisplay(dom) : NONE;
             }
             this.setStyle(DISPLAY, value);
             return this;
@@ -768,7 +770,6 @@
         // private
         fixDisplay : function(){
             var me = this;
-           
             if(me.isStyle(DISPLAY, NONE)){
                 me.setStyle(VISIBILITY, HIDDEN);
                 me.setStyle(DISPLAY, getDisplay(me.dom)); // first try reverting to default
@@ -776,6 +777,7 @@
                     me.setStyle(DISPLAY, "block");
                 }
             }
+            data(me.dom, ISVISIBLE) || me.removeClass(me.visibilityCls || El.visibilityCls);
             
         },
         
@@ -793,26 +795,27 @@
         },
         
         scrollIntoView : function(container, hscroll){
-                var d = this.getDocument();
-                var c = Ext.getDom(container, null, d) || Ext.getBody(d).dom;
-                var el = this.dom;
-                var o = this.getOffsetsTo(c),
-                    s = this.getScroll(),
-                    l = o[0] + s.left,
-                    t = o[1] + s.top,
-                    b = t + el.offsetHeight,
-                    r = l + el.offsetWidth;
-                var ch = c.clientHeight;
-                var ct = parseInt(c.scrollTop, 10);
-                var cl = parseInt(c.scrollLeft, 10);
-                var cb = ct + ch;
-                var cr = cl + c.clientWidth;
+                var d = this.getDocument(),
+                    c = Ext.getDom(container, null, d) || Ext.getBody(d).dom,
+                    el = this.dom,
+                    o = this.getOffsetsTo(c),
+                    l = o[0] + c.scrollLeft,
+		            t = o[1] + c.scrollTop,
+		            b = t + el.offsetHeight,
+		            r = l + el.offsetWidth,
+		            ch = c.clientHeight,
+		            ct = parseInt(c.scrollTop, 10),
+		            cl = parseInt(c.scrollLeft, 10),
+		            cb = ct + ch,
+		            cr = cl + c.clientWidth;
+                    
                 if(el.offsetHeight > ch || t < ct){
                     c.scrollTop = t;
                 }else if(b > cb){
                     c.scrollTop = b-ch;
                 }
-                c.scrollTop = c.scrollTop; // corrects IE, other browsers will ignore
+                // corrects IE, other browsers will ignore
+                c.scrollTop = c.scrollTop; 
                 if(hscroll !== false){
                     if(el.offsetWidth > c.clientWidth || l < cl){
                         c.scrollLeft = l;
@@ -883,15 +886,17 @@
                            (cs = view.getComputedStyle(el, '')) ? cs[prop] : null;
                            
                     // Fix bug caused by this: https://bugs.webkit.org/show_bug.cgi?id=13343
-                    if(wk && marginRightRe.test(prop) && out != '0px'){
-                        display = this.getStyle('display');
-                        el.style.display = 'inline-block';
-                        out = view.getComputedStyle(el, '');
-                        el.style.display = display;
-                    }
-                    // Webkit returns rgb values for transparent.
-                    if(wk && out == 'rgba(0, 0, 0, 0)'){
-                        out = 'transparent';
+                    if(wk){
+                        if((marginRightRe.test(prop)) && out != '0px'){
+	                        display = this.getStyle('display');
+	                        el.style.display = 'inline-block';
+	                        out = view.getComputedStyle(el, '');
+	                        el.style.display = display;
+	                    }
+                        // Webkit returns rgb values for transparent.
+	                    if(out == 'rgba(0, 0, 0, 0)'){
+	                        out = 'transparent';
+	                    }
                     }
                     return out;
                 } :
@@ -925,10 +930,9 @@
          */
         setStyle : function(prop, value){
             if(this._isDoc || Ext.isDocument(this.dom)) return this;
-            var tmp,
-                style,
-                camel;
-            if (!Ext.isObject(prop)) {
+            var tmp, style;
+                
+            if (typeof prop != 'object') {
                 tmp = {};
                 tmp[prop] = value;
                 prop = tmp;
@@ -1257,12 +1261,13 @@
                 vw -= offsets.right;
                 vh -= offsets.bottom;
 
-                var vr = vx+vw;
-                var vb = vy+vh;
-
-                var xy = proposedXY || (!local ? this.getXY() : [this.getLeft(true), this.getTop(true)]);
-                var x = xy[0], y = xy[1];
-                var w = this.dom.offsetWidth, h = this.dom.offsetHeight;
+                var vr = vx + vw,
+                    vb = vy + vh,
+                    xy = proposedXY || (!local ? this.getXY() : [this.getLeft(true), this.getTop(true)]);
+                    x = xy[0], y = xy[1],
+                    offset = this.getConstrainOffset(),
+                    w = this.dom.offsetWidth + offset, 
+                    h = this.dom.offsetHeight + offset;
 
                 // only move it if it needs it
                 var moved = false;
@@ -1288,6 +1293,12 @@
                 return moved ? [x, y] : false;
             };
         }(),
+        
+        // private, used internally
+	    getConstrainOffset : function(){
+	        return 0;
+	    },
+	    
         /**
         * Calculates the x, y to center this element on the screen
         * @return {Array} The x, y values [x, y]
@@ -1628,7 +1639,7 @@
      * @private
      * Add Ext.fly support for targeted document contexts
      */
-
+    
     Ext.fly = El.fly = function(el, named, doc){
         var ret = null;
         named = named || '_global';
@@ -1656,8 +1667,10 @@
         if(!el){ return; }
 
         var id = Ext.id(el),
-            es = (resolveCache(el)[id]||{}).events || {},
-            wfn;
+            cache = resolveCache(el);
+            cache[id] || El.addToCache(el, null, cache);
+            
+         var es = cache[id].events || {}, wfn;
 
         wfn = E.on(el, ename, wrap);
         es[ename] = es[ename] || [];
@@ -1765,7 +1778,7 @@
 
     Ext.apply(Evm ,{
          addListener : Evm.on = function(element, eventName, fn, scope, options){
-            if(Ext.isObject(eventName)){
+            if(typeof eventName == 'object'){
                 var o = eventName, e, val;
                 for(e in o){
                     val = o[e];
@@ -1910,7 +1923,7 @@
 
         purgeElement : function(el, recurse, eventName) {
             el = Ext.getDom(el);
-            var id = el.id,
+            var id = Ext.id(el),
                 elCache = resolveCache(el),
                 es = (elCache[id] || {}).events || {},
                 i, f, len;

@@ -326,20 +326,19 @@
             manager : null,
 
             /**
-              * Enables/disables internal cross-frame messaging interface
               * @cfg {Boolean} disableMessaging False to enable cross-frame messaging API
-              * Default = true
+              * @default true
               *
               */
             disableMessaging  :  true,
 
              /**
+              * @cfg {Integer} domReadyRetries 
               * Maximum number of domready event detection retries for IE.  IE does not provide
               * a native DOM event to signal when the frames DOM may be manipulated, so a polling process
               * is used to determine when the documents BODY is available. <p> Certain documents may not contain
               * a BODY tag:  eg. MHT(rfc/822), XML, or other non-HTML content. Detection polling will stop after this number of 2ms retries 
               * or when the documentloaded event is raised.</p>
-              * @cfg {Integer} domReadyRetries 
               * @default 7500 (* 2 = 15 seconds) 
               */
             domReadyRetries   :  7500,
@@ -355,10 +354,10 @@
             focusOnLoad   : Ext.isIE,
             
             /**
-              * Enables/disables internal cross-frame messaging interface
-              * @cfg {Boolean} disableMessaging False to enable cross-frame messaging API
-              * Default = true
-              *
+              * Toggles raising of events for URL actions that the Component did not initiate. 
+              * @cfg {Boolean} eventsFollowFrameLinks set true to propogate domready and documentloaded
+              * events anytime the IFRAME's URL changes
+              * @default true
               */
             eventsFollowFrameLinks   : true,
            
@@ -1415,12 +1414,14 @@
 	         * Dispatch a cross-document message (per HTML5 specification) if the browser supports it natively.
 	         * @name postMessage
 	         * @param {String} message Required message payload (String only)
-	         * @param {Array} ports Optional array of ports/channels. 
-	         * @param {String} origin Optional domain designation of the sender (defaults
-	         * to document.domain). 
-	         * <p>Notes:  on IE8, this action is synchronous.
+	         * @param {String} origin (Optional) Site designation of the sender (defaults
+	         * to the current site in the form: http://site.example.com ). 
+	         * <p>Notes:  on IE8, this action is synchronous.<br/>
+             * Messaging support requires that the optional messaging driver source 
+             * file (mifmsg.js) is also included in your project.
+             * 
 	         */
-	        postMessage : function(message ,ports ,origin ){
+	        postMessage : function(message ,origin ){
 	            //(implemented by mifmsg.js )
 	        }
 
@@ -1496,6 +1497,20 @@
         animFloat  : Ext.isIE ,
         
         /**
+          * @cfg {Boolean} disableMessaging False to enable cross-frame messaging API
+          * @default true
+          *
+          */
+        disableMessaging : true, 
+        
+        /**
+          * @cfg {Boolean} eventsFollowFrameLinks set true to propagate domready and documentloaded
+          * events anytime the IFRAME's URL changes
+          * @default true
+          */
+        eventsFollowFrameLinks   : true,
+        
+        /**
          * @cfg {object} frameConfig Frames DOM configuration options
          * This optional configuration permits override of the IFRAME's DOM attributes
          * @example
@@ -1512,9 +1527,9 @@
          * reports loaded.  (Many external sites use IE's document.createRange to create 
          * DOM elements, but to be successfull IE requires that the FRAME have focus before
          * the method is called)
-         * @default false
+         * @default false (true for Internet Explorer)
          */
-        focusOnLoad   : false,
+        focusOnLoad   : Ext.isIE,
         
         /**
          * @property {Object} frameEl An {@link #Ext.ux.ManagedIFrame.Element} reference to rendered frame Element.
@@ -2018,7 +2033,14 @@
                 
                 var F;
                 if( F = this.frameEl = (this.el ? new MIF.Element(this.el.dom, true): null)){
-                    (F.ownerCt = (this.relayTarget || this)).frameEl = F;
+                    
+                    Ext.apply(F,{
+                        ownerCt          : this.relayTarget || this,
+                        disableMessaging : Ext.value(this.disableMessaging, true),
+                        focusOnLoad      : Ext.value(this.focusOnLoad, Ext.isIE),
+                        eventsFollowFrameLinks : Ext.value(this.eventsFollowFrameLinks ,true)
+                    });
+                    F.ownerCt.frameEl = F;
                     F.addClass('ux-mif'); 
                     if (this.loadMask) {
                         //resolve possible maskEl by Element name eg. 'body', 'bwrap', 'actionEl'
@@ -2036,11 +2058,6 @@
                               );
                         Ext.get(F.loadMask.maskEl) && Ext.get(F.loadMask.maskEl).addClass('ux-mif-mask-target');
                     }
-                    
-                    Ext.apply(F,{
-                        disableMessaging : Ext.value(this.disableMessaging, true),
-                        focusOnLoad      : Ext.value(this.focusOnLoad, Ext.isIE)
-                    });
                     
                     F._observable && 
                         (this.relayTarget || this).relayEvents(F._observable, frameEvents.concat(this._msgTagHandlers || []));
@@ -2156,6 +2173,7 @@
          frameMarkup  : Ext.value(config.html , this.html),
             loadMask  : Ext.value(config.loadMask , this.loadMask),
     disableMessaging  : Ext.value(config.disableMessaging, this.disableMessaging),
+ eventsFollowFrameLinks : Ext.value(config.eventsFollowFrameLinks, this.eventsFollowFrameLinks),
          focusOnLoad  : Ext.value(config.focusOnLoad, this.focusOnLoad),
           frameConfig : Ext.value(config.frameConfig || config.frameCfg , this.frameConfig),
           relayTarget : this  //direct relay of events to the parent component
@@ -2684,6 +2702,8 @@
         if(mif){
             Ext.apply(mif, {
                 disableMessaging : Ext.value(config.disableMessaging , true),
+                focusOnLoad : Ext.value(config.focusOnLoad , Ext.isIE),
+                eventsFollowFrameLinks : Ext.value(config.eventsFollowFrameLinks ,true),
                 loadMask : !!config.loadMask ? Ext.apply({
                             msg : 'Loading..',
                             msgCls : 'x-mask-loading',
@@ -2691,8 +2711,8 @@
                             hideOnReady : false,
                             disabled : false
                         }, config.loadMask) : false,
-                _windowContext : null,
-                eventsFollowFrameLinks : Ext.value(config.eventsFollowFrameLinks ,true)
+                _windowContext : null
+                
             });
             
             config.listeners && mif.on(config.listeners);
@@ -2755,7 +2775,11 @@
                 rules.push('.ux-mif-shim-on{width:100%;height:100%;display:block;zoom:1;}');
                 rules.push('.ext-ie6 .ux-mif-shim{margin-left:5px;margin-top:3px;}');
             }
-
+            
+            if (!CSS.getRule('.x-hide-nosize')){ 
+                rules.push ('.x-hide-nosize{height:0px!important;width:0px!important;visibility:hidden!important;border:none!important;zoom:1;}.x-hide-nosize * {height:0px!important;width:0px!important;visibility:hidden!important;border:none!important;zoom:1;}');
+            }
+  
             !!rules.length && CSS.createStyleSheet(rules.join(' '), 'mifCSS');
             
         });
