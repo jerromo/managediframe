@@ -10,7 +10,7 @@
 
  /**
   * @class multidom
-  * @version 2.11
+  * @version 2.12
   * @license MIT
   * @author Doug Hendricks. Forum ID: <a href="http://extjs.com/forum/member.php?u=8730">hendricd</a>
   * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
@@ -63,7 +63,7 @@
        OP = Object.prototype,
        OPString = OP.toString,
        HTMLDoc = '[object HTMLDocument]';
-       
+
    if(!Ext.elCache || parseInt( Ext.version.replace(/\./g,''),10) < 311 ) {
     alert ('Ext Release '+Ext.version+' is not supported');
    }
@@ -71,7 +71,7 @@
    /**
     * @private
     */
-   Ext._documents= {}; 
+   Ext._documents= {};
    Ext._documents[Ext.id(document,'_doc')]=Ext.elCache;
 
     /**
@@ -82,7 +82,7 @@
         var doc = GETDOC(el),
             c = Ext.isDocument(doc) ? Ext.id(doc) : cacheId,
             cache = Ext._documents[c] || null;
-         
+
          return cache || (c ? Ext._documents[c] = {}: null);
      },
      clearCache = ELD.clearDocumentCache = function(cacheId){
@@ -90,7 +90,7 @@
      };
 
    El.addMethods || ( El.addMethods = function(ov){ Ext.apply(El.prototype, ov||{}); });
-   
+
    Ext.removeNode =  function(n){
          var dom = n ? n.dom || n : null,
              el, elc, elCache = resolveCache(dom), parent;
@@ -186,7 +186,7 @@
             //NodeList has an item and length property
             //IXMLDOMNodeList has nextNode method, needs to be checked first.
             return ((typeof v.nextNode != 'undefined' || v.item) && Ext.isNumber(v.length));
-  
+
         },
         isElement : function(obj){
             return obj && Ext.type(obj)== 'element';
@@ -266,8 +266,8 @@
      * Determine Ext.Element[tagName] or Ext.Element (default)
      */
     var assertClass = function(el){
-    	
-    	return El;
+
+        return El;
         return El[(el.tagName || '-').toUpperCase()] || El;
 
       };
@@ -291,10 +291,10 @@
 
       get : El.get = function(el, doc){         //document targeted
             if(!el ){ return null; }
-            var isDoc = Ext.isDocument(el); 
-            
+            var isDoc = Ext.isDocument(el);
+
             Ext.isDocument(doc) || (doc = DOC);
-            
+
             var ex, elm, id, cache = resolveCache(doc);
             if(typeof el == "string"){ // element id
                 elm = Ext.getDom(el, null, doc);
@@ -306,7 +306,7 @@
                     ex = El.addToCache(new (assertClass(elm))(elm, null, doc));
                 }
                 return ex;
-            
+
             }else if(isDoc){
 
                 if(!Ext.isDocument(el, true)){ return false; }  //is it accessible
@@ -324,32 +324,32 @@
                 docEl._isDoc = true;
                 El.addToCache( docEl, null, cache);
                 return docEl;
-                        
-             }else if( el instanceof El ){ 
-                
+
+             }else if( el instanceof El ){
+
                 // refresh dom element in case no longer valid,
                 // catch case where it hasn't been appended
-                 
+
                 if(el.dom){
                     el.id = Ext.id(el.dom);
                 }else{
                     el.dom = el.id ? Ext.getDom(el.id, true) : null;
                 }
                 if(el.dom){
-	                cache = resolveCache(el);
-	                (cache[el.id] || 
-	                       (cache[el.id] = {data : {}, events : {}}
-	                       )).el = el; // in case it was created directly with Element(), let's cache it
+                    cache = resolveCache(el);
+                    (cache[el.id] ||
+                           (cache[el.id] = {data : {}, events : {}}
+                           )).el = el; // in case it was created directly with Element(), let's cache it
                 }
                 return el;
-                
+
             }else if(el.tagName || Ext.isWindow(el)){ // dom element
                 cache = resolveCache(el);
                 id = Ext.id(el);
                 if(cache[id] && (ex = cache[id].el)){
                     ex.dom = el;
                 }else{
-                    ex = El.addToCache(new (assertClass(el))(el, null, doc), null, cache); 
+                    ex = El.addToCache(new (assertClass(el))(el, null, doc), null, cache);
                 }
                 return ex;
 
@@ -390,7 +390,7 @@
                 return el;
             }
         }
-            
+
      },
      /**
      * Returns the current/specified document body as an {@link Ext.Element}.
@@ -421,31 +421,31 @@
             return (c[key] = value);
         }
     };
-    
+
     El.addToCache = function(el, id, cache ){
-	    id = id || Ext.id(el);    
+        id = id || Ext.id(el);
         var C = cache || resolveCache(el);
-	    C[id] = {
-	        el:  el,
-	        data: {},
-	        events: {}
-	    };
+        C[id] = {
+            el:  el,
+            data: {},
+            events: {}
+        };
         (el.getElementById || el.navigator) && (C[id].skipGC = true);
-	    return el;
-	};
-    
+        return el;
+    };
+
     El.removeFromCache = function(el, cache){
         if(el && el.id){
             var C = cache || resolveCache(el);
             delete C[el.id];
         }
     };
-    
+
     /*
      * Add new Visibility Mode to element (sets height and width to 0px instead of display:none )
      */
     El.ASCLASS = 3;
-    
+
     El.visibilityCls = 'x-hide-nosize';
 
     var propCache = {},
@@ -476,7 +476,7 @@
         OFFSETS = "offsets",
         ASCLASS  = "asclass",
         HIDDEN = "hidden",
-        NONE = "none", 
+        NONE = "none",
         ISVISIBLE = 'isVisible',
         ISCLIPPED = 'isClipped',
         OVERFLOW = 'overflow',
@@ -530,7 +530,7 @@
       */
 
         remove : function(cleanse, deep){
-            
+
           var dom = this.dom;
           this.isMasked() && this.unmask();
           if(dom){
@@ -631,7 +631,7 @@
             Ext.removeNode(me.dom);
             me.id = Ext.id(me.dom = el);
 
-            El.addToCache(me.isFlyweight ? new (assertClass(me.dom))(me.dom, null, C) : me);     
+            El.addToCache(me.isFlyweight ? new (assertClass(me.dom))(me.dom, null, C) : me);
             return me;
         },
 
@@ -647,30 +647,30 @@
             var el = DH.insertHtml(where, this.dom, html);
             return returnEl ? Ext.get(el, GETDOC(el)) : el;
         },
-        
+
         /**
          * Sets the element's visibility mode. When setVisible() is called it
          * will use this to determine whether to set the visibility or the display property.
          * @param {Number} visMode Ext.Element.VISIBILITY or Ext.Element.DISPLAY
          * @return {Ext.Element} this
          */
-        setVisibilityMode : function(visMode){  
+        setVisibilityMode : function(visMode){
             data(this.dom, VISMODE, visMode);
             return this;
         },
-        
-        
+
+
         /**
          * Checks whether the element is currently visible using both visibility and display properties.
          * @return {Boolean} True if the element is currently visible, else false
          */
         isVisible : function() {
-            return this.visible || Ext.value( data(this.dom, ISVISIBLE ), 
+            return this.visible || Ext.value( data(this.dom, ISVISIBLE ),
                !this.isStyle(VISIBILITY, HIDDEN) && !this.isStyle(DISPLAY, NONE));
         },
-        
+
         //visibilityMode : El.DISPLAY = 3,
-        
+
         /**
          * Sets the visibility of the element (see details). If the visibilityMode is set to Element.DISPLAY, it will use
          * the display property to hide the element, otherwise it uses visibility. The default is to hide and show using the visibility property.
@@ -683,7 +683,7 @@
             var me = this,
                 dom = me.dom,
                 isDisplay, isVisibility, isOffsets, isClass;
-            
+
             // hideMode string override
             if (typeof animate == 'string'){
                 isDisplay = animate == DISPLAY;
@@ -697,15 +697,15 @@
                 isVisibility = visMode == ELVISIBILITY;
                 isClass = visMode == ELASCLASS;
             }
-            
+
             if (!animate || !me.anim) {
-               
+
                 if (isClass){
                     me[visible?'removeClass':'addClass'](me.visibilityCls || El.visibilityCls);
-                    
+
                 } else if (isDisplay){
                     return me.setDisplayed(visible);
-                    
+
                 } else if (isOffsets){
                     if (!visible){
                         me.hideModeStyles = {
@@ -718,13 +718,13 @@
                         me.applyStyles(me.hideModeStyles || {position: '', top: '', left: ''});
                         delete me.hideModeStyles;
                     }
-                
+
                 }else{
                     me.fixDisplay();
                     dom.style.visibility = visible ? "visible" : HIDDEN;
                 }
             }else{
-                // closure for composites            
+                // closure for composites
                 if(visible){
                     me.setOpacity(.01);
                     me.setVisible(true);
@@ -736,9 +736,9 @@
                         'easeIn',
                         function(){
                              if(!visible){
-                                 isClass ? 
+                                 isClass ?
                                    me.addClass(me.visibilityCls || El.visibilityCls) :
-                                    dom.style[isDisplay ? DISPLAY : VISIBILITY] = (isDisplay) ? NONE : HIDDEN;                     
+                                    dom.style[isDisplay ? DISPLAY : VISIBILITY] = (isDisplay) ? NONE : HIDDEN;
                                  me.setOpacity(1);
                              }
                         });
@@ -754,9 +754,9 @@
         setDisplayed : function(value) {
             var dom = this.dom,
                 visMode = getVisMode(dom);
-            
+
             if(typeof value == "boolean"){
-               
+
                if(visMode == El.ASCLASS){
                   return this.setVisible(value, ASCLASS);
                }
@@ -766,7 +766,7 @@
             this.setStyle(DISPLAY, value);
             return this;
         },
-        
+
         // private
         fixDisplay : function(){
             var me = this;
@@ -778,44 +778,44 @@
                 }
             }
             data(me.dom, ISVISIBLE) || me.removeClass(me.visibilityCls || El.visibilityCls);
-            
+
         },
-        
+
         /**
          * Convenience method for setVisibilityMode(Element.DISPLAY)
          * @param {String} display (optional) What to set display to when visible
          * @return {Ext.Element} this
          */
-        enableDisplayMode : function(display){      
+        enableDisplayMode : function(display){
             this.setVisibilityMode(El.DISPLAY);
             if(!Ext.isEmpty(display)){
                 data(this.dom, ORIGINALDISPLAY, display);
             }
             return this;
         },
-        
+
         scrollIntoView : function(container, hscroll){
                 var d = this.getDocument(),
                     c = Ext.getDom(container, null, d) || Ext.getBody(d).dom,
                     el = this.dom,
                     o = this.getOffsetsTo(c),
                     l = o[0] + c.scrollLeft,
-		            t = o[1] + c.scrollTop,
-		            b = t + el.offsetHeight,
-		            r = l + el.offsetWidth,
-		            ch = c.clientHeight,
-		            ct = parseInt(c.scrollTop, 10),
-		            cl = parseInt(c.scrollLeft, 10),
-		            cb = ct + ch,
-		            cr = cl + c.clientWidth;
-                    
+                    t = o[1] + c.scrollTop,
+                    b = t + el.offsetHeight,
+                    r = l + el.offsetWidth,
+                    ch = c.clientHeight,
+                    ct = parseInt(c.scrollTop, 10),
+                    cl = parseInt(c.scrollLeft, 10),
+                    cb = ct + ch,
+                    cr = cl + c.clientWidth;
+
                 if(el.offsetHeight > ch || t < ct){
                     c.scrollTop = t;
                 }else if(b > cb){
                     c.scrollTop = b-ch;
                 }
                 // corrects IE, other browsers will ignore
-                c.scrollTop = c.scrollTop; 
+                c.scrollTop = c.scrollTop;
                 if(hscroll !== false){
                     if(el.offsetWidth > c.clientWidth || l < cl){
                         c.scrollLeft = l;
@@ -881,22 +881,22 @@
 
                     if(!el || !el.style) return null;
                     prop = chkCache(prop);
-                    
+
                     out =  (v = el.style[prop]) ? v :
                            (cs = view.getComputedStyle(el, '')) ? cs[prop] : null;
-                           
+
                     // Fix bug caused by this: https://bugs.webkit.org/show_bug.cgi?id=13343
                     if(wk){
                         if((marginRightRe.test(prop)) && out != '0px'){
-	                        display = this.getStyle('display');
-	                        el.style.display = 'inline-block';
-	                        out = view.getComputedStyle(el, '');
-	                        el.style.display = display;
-	                    }
+                            display = this.getStyle('display');
+                            el.style.display = 'inline-block';
+                            out = view.getComputedStyle(el, '');
+                            el.style.display = display;
+                        }
                         // Webkit returns rgb values for transparent.
-	                    if(out == 'rgba(0, 0, 0, 0)'){
-	                        out = 'transparent';
-	                    }
+                        if(out == 'rgba(0, 0, 0, 0)'){
+                            out = 'transparent';
+                        }
                     }
                     return out;
                 } :
@@ -931,7 +931,7 @@
         setStyle : function(prop, value){
             if(this._isDoc || Ext.isDocument(this.dom)) return this;
             var tmp, style;
-                
+
             if (typeof prop != 'object') {
                 tmp = {};
                 tmp[prop] = value;
@@ -952,7 +952,7 @@
         center : function(centerIn){
             return this.alignTo(centerIn || this.getDocument(), 'c-c');
         },
-        
+
         /**
          * Puts a mask over this element to disable user interaction. Requires core.css.
          * This method can only be applied to elements which accept child nodes.
@@ -965,9 +965,9 @@
                 dom = me.dom,
                 dh = Ext.DomHelper,
                 EXTELMASKMSG = "ext-el-mask-msg",
-                el, 
+                el,
                 mask;
-                
+
             if(me.getStyle("position") == "static"){
                 me.addClass(XMASKEDRELATIVE);
             }
@@ -977,10 +977,10 @@
             if((el = data(dom, 'mask'))){
                 el.remove();
             }
-    
+
             mask = dh.append(dom, {cls : "ext-el-mask"}, true);
             data(dom, 'mask', mask);
-    
+
             me.addClass(XMASKED);
             mask.setDisplayed(true);
             if(typeof msg == 'string'){
@@ -996,7 +996,7 @@
             }
             return mask;
         },
-    
+
         /**
          * Removes a previously applied mask.
          */
@@ -1015,7 +1015,7 @@
             }
             me.removeClass([XMASKED, XMASKEDRELATIVE]);
         },
-        
+
         /**
          * Returns true if this element is masked
          * @return {Boolean}
@@ -1266,7 +1266,7 @@
                     xy = proposedXY || (!local ? this.getXY() : [this.getLeft(true), this.getTop(true)]);
                     x = xy[0], y = xy[1],
                     offset = this.getConstrainOffset(),
-                    w = this.dom.offsetWidth + offset, 
+                    w = this.dom.offsetWidth + offset,
                     h = this.dom.offsetHeight + offset;
 
                 // only move it if it needs it
@@ -1293,12 +1293,12 @@
                 return moved ? [x, y] : false;
             };
         }(),
-        
+
         // private, used internally
-	    getConstrainOffset : function(){
-	        return 0;
-	    },
-	    
+        getConstrainOffset : function(){
+            return 0;
+        },
+
         /**
         * Calculates the x, y to center this element on the screen
         * @return {Array} The x, y values [x, y]
@@ -1306,7 +1306,7 @@
         getCenterXY : function(){
             return this.getAlignToXY(Ext.getBody(this.getDocument()), 'c-c');
         },
-       
+
         /**
         * Centers the Element in either the viewport, or another Element.
         * @param {Mixed} centerIn (optional) The element in which to center the element.
@@ -1352,7 +1352,7 @@
         clip : function(){
             var me = this,
                 dom = me.dom;
-                
+
             if(!data(dom, ISCLIPPED)){
                 data(dom, ISCLIPPED, true);
                 data(dom, ORIGINALCLIP, {
@@ -1366,7 +1366,7 @@
             }
             return me;
         },
-    
+
         /**
          *  Return clipping (overflow) to original clipping before <tt>{@link #clip}</tt> was called
          * @return {Ext.Element} this
@@ -1374,7 +1374,7 @@
         unclip : function(){
             var me = this,
                 dom = me.dom;
-                
+
             if(data(dom, ISCLIPPED)){
                 data(dom, ISCLIPPED, false);
                 var o = data(dom, ORIGINALCLIP);
@@ -1390,7 +1390,7 @@
             }
             return me;
         },
-        
+
         getViewSize : function(){
             var doc = this.getDocument(),
                 d = this.dom,
@@ -1455,69 +1455,69 @@
             return {width: w || me.getWidth(true), height: h || me.getHeight(true)};
         }
     });
-    
+
     //Stop the existing collectorThread
     Ext.isDefined(El.collectorThreadId) && clearInterval(El.collectorThreadId);
     // private
-	// Garbage collection - uncache elements/purge listeners on orphaned elements
-	// so we don't hold a reference and cause the browser to retain them
-	function garbageCollect(){
-	    if(!Ext.enableGarbageCollector){
-	        clearInterval(El.collectorThreadId);
-	    } else {
-	        var eid,
-	            el,
-	            d,
+    // Garbage collection - uncache elements/purge listeners on orphaned elements
+    // so we don't hold a reference and cause the browser to retain them
+    function garbageCollect(){
+        if(!Ext.enableGarbageCollector){
+            clearInterval(El.collectorThreadId);
+        } else {
+            var eid,
+                el,
+                d,
                 o,
                 EC = Ext.elCache;
-	
-	        for(eid in EC){
+
+            for(eid in EC){
                 o = EC[eid];
                 if(o.skipGC){
-	                continue;
-	            }
-	            el = o.el;
-	            d = el.dom;
-	            // -------------------------------------------------------
-	            // Determining what is garbage:
-	            // -------------------------------------------------------
-	            // !d
-	            // dom node is null, definitely garbage
-	            // -------------------------------------------------------
-	            // !d.parentNode
-	            // no parentNode == direct orphan, definitely garbage
-	            // -------------------------------------------------------
-	            // !d.offsetParent && !document.getElementById(eid)
-	            // display none elements have no offsetParent so we will
-	            // also try to look it up by it's id. However, check
-	            // offsetParent first so we don't do unneeded lookups.
-	            // This enables collection of elements that are not orphans
-	            // directly, but somewhere up the line they have an orphan
-	            // parent.
-	            // -------------------------------------------------------
-	            
-	            if(!d || !d.parentNode || (!d.offsetParent && !DOC.getElementById(eid))){
-	                if(Ext.enableListenerCollection){
-	                    Ext.EventManager.removeAll(d);
-	                }
-	                delete EC[eid];
-	            }
-	        
+                    continue;
+                }
+                el = o.el;
+                d = el.dom;
+                // -------------------------------------------------------
+                // Determining what is garbage:
+                // -------------------------------------------------------
+                // !d
+                // dom node is null, definitely garbage
+                // -------------------------------------------------------
+                // !d.parentNode
+                // no parentNode == direct orphan, definitely garbage
+                // -------------------------------------------------------
+                // !d.offsetParent && !document.getElementById(eid)
+                // display none elements have no offsetParent so we will
+                // also try to look it up by it's id. However, check
+                // offsetParent first so we don't do unneeded lookups.
+                // This enables collection of elements that are not orphans
+                // directly, but somewhere up the line they have an orphan
+                // parent.
+                // -------------------------------------------------------
+
+                if(!d || !d.parentNode || (!d.offsetParent && !DOC.getElementById(eid))){
+                    if(Ext.enableListenerCollection){
+                        Ext.EventManager.removeAll(d);
+                    }
+                    delete EC[eid];
+                }
+
             }
-	        // Cleanup IE COM Object Hash reference leaks 
-	        if (Ext.isIE) {
-	            var t = {};
-	            for (eid in EC) {
-	                t[eid] = EC[eid];
-	            }
-	            Ext.elCache = Ext._documents[Ext.id(document)] = t;
+            // Cleanup IE COM Object Hash reference leaks
+            if (Ext.isIE) {
+                var t = {};
+                for (eid in EC) {
+                    t[eid] = EC[eid];
+                }
+                Ext.elCache = Ext._documents[Ext.id(document)] = t;
                 t = null;
-	        }
-	    }
-	}
+            }
+        }
+    }
     //Restart if enabled
     if(Ext.enableGarbageCollector){
-	   El.collectorThreadId = setInterval(garbageCollect, 30000);
+       El.collectorThreadId = setInterval(garbageCollect, 30000);
     }
 
     Ext.apply(ELD , {
@@ -1628,8 +1628,8 @@
                 return this.getXY(el);
             }
           ])
-                
-                
+
+
     });
 
     var GETDOC = ELD.getDocument,
@@ -1639,7 +1639,7 @@
      * @private
      * Add Ext.fly support for targeted document contexts
      */
-    
+
     Ext.fly = El.fly = function(el, named, doc){
         var ret = null;
         named = named || '_global';
@@ -1661,7 +1661,7 @@
 
     El.Flyweight.prototype = new flyFn();
     El.Flyweight.prototype.isFlyweight = true;
-    
+
     function addListener(el, ename, fn, task, wrap, scope){
         el = Ext.getDom(el);
         if(!el){ return; }
@@ -1669,7 +1669,7 @@
         var id = Ext.id(el),
             cache = resolveCache(el);
             cache[id] || El.addToCache(el, null, cache);
-            
+
          var es = cache[id].events || {}, wfn;
 
         wfn = E.on(el, ename, wrap);
@@ -1678,14 +1678,14 @@
 
         // this is a workaround for jQuery and should somehow be removed from Ext Core in the future
         // without breaking ExtJS.
-        if(el.addEventListener && ename == "mousewheel" ){ 
+        if(el.addEventListener && ename == "mousewheel" ){
             var args = ["DOMMouseScroll", wrap, false];
             el.addEventListener.apply(el, args);
             Ext.EventManager.addListener(window, 'beforeunload', function(){
                 el.removeEventListener.apply(el, args);
             });
         }
-        if(ename == "mousedown" && Ext.isDocument(el)){ // fix stopped mousedowns on the document
+        if(ename == "mousedown" && DOC == el){ // fix stopped mousedowns on the document
             Ext.EventManager.stoppedMouseDownEvent.addListener(wrap);
         }
     };
@@ -1831,21 +1831,21 @@
                     }
                     wrap = fnc[1];
                     E.un(el, eventName, E.extAdapter ? fnc[3] : wrap);
-                    
+
                     // jQuery workaround that should be removed from Ext Core
                     if(wrap && eventName == "mousewheel" && el.addEventListener ){
                         el.removeEventListener("DOMMouseScroll", wrap, false);
                     }
-        
-                    if(wrap && eventName == "mousedown" && Ext.isDocument(el)){ // fix stopped mousedowns on the document
+
+                    if(wrap && eventName == "mousedown" && DOC == el){ // fix stopped mousedowns on the document
                         Ext.EventManager.stoppedMouseDownEvent.removeListener(wrap);
                     }
-                    
+
                     f.splice(i,1);
                     if (f.length === 0) {
                         delete elCache[el.id].events[eventName];
                     }
-                    
+
                     for (k in elCache[el.id].events) {
                         return false;
                     }
@@ -1854,7 +1854,7 @@
                 }
             }
 
-            
+
         },
 
         /**
@@ -1890,7 +1890,7 @@
                             }
                             delete fn.tasks;
                         }
-                        
+
                         wrap =  fn[1];
                         E.un(el, ename, E.extAdapter ? fn[3] : wrap);
 
@@ -1900,7 +1900,7 @@
                         }
 
                         // fix stopped mousedowns on the document
-                        if(wrap && Ext.isDocument(el) &&  ename == "mousedown"){
+                        if(wrap && DOC == el &&  ename == "mousedown"){
                             Ext.EventManager.stoppedMouseDownEvent.removeListener(wrap);
                         }
                     }
@@ -1944,7 +1944,7 @@
             }
         }
     });
-    
+
     // deprecated, call from EventManager
     E.getListeners = function(el, eventName) {
        return Ext.EventManager.getListeners(el, eventName);
