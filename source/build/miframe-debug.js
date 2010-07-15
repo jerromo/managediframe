@@ -693,12 +693,13 @@
         id = id || Ext.id(el);
         var C = cache || resolveCache(el);
         C[id] = {
-            el:  el,
+            el:  el.dom ? el : Ext.get(el),
             data: {},
             events: {}
         };
-        (el.getElementById || el.navigator) && (C[id].skipGC = true);
-        return el;
+        var d = C[id].el.dom;
+        (d.getElementById || d.navigator) && (C[id].skipGC = true);
+        return C[id].el;
     };
 
     El.removeFromCache = function(el, cache){
@@ -1935,7 +1936,7 @@
 
         var id = Ext.id(el),
             cache = resolveCache(el);
-            cache[id] || El.addToCache(el, null, cache);
+            cache[id] || El.addToCache(el, id, cache);
 
          var es = cache[id].events || {}, wfn;
 
