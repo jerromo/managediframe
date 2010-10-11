@@ -342,11 +342,18 @@
    Ext._documents= {}; 
    Ext._documents[Ext.id(document,'_doc')]=Ext.elCache;
 
-    /**
+   /**
     * @private
     * Resolve the Element cache for a given element/window/document context.
     */
-    var resolveCache = ELD.resolveDocumentCache = function(el, cacheId){
+   var resolveCache = ELD.resolveDocumentCache = function(el, cacheId){
+        
+        /**
+         * MUST re-assert Ext.elCache !! 
+         * because of privately scoped references to Ext.elCache in the framework itself.
+         */
+        Ext._documents[Ext.id(document,'_doc')]=Ext.elCache;
+        
         var doc = GETDOC(el),
             c = Ext.isDocument(doc) ? Ext.id(doc) : cacheId,
             cache = Ext._documents[c] || null;
@@ -380,7 +387,7 @@
             dom = parent = null;
     };
 
-     var overload = function(pfn, fn ){
+    var overload = function(pfn, fn ){
            var f = typeof pfn === 'function' ? pfn : function t(){};
            var ov = f._ovl; //call signature hash
            if(!ov){
@@ -801,7 +808,7 @@
         remove : function(cleanse, deep){
             
           var dom = this.dom;
-          this.isMasked() && this.unmask();
+          //this.isMasked() && this.unmask();
           if(dom){
             Ext.removeNode(dom);
             delete this._context;
@@ -1739,76 +1746,7 @@
             return {width: w || me.getWidth(true), height: h || me.getHeight(true)};
         }
     });
-    
-    //Stop the existing collectorThread
-    Ext.isDefined(El.collectorThreadId) && clearInterval(El.collectorThreadId);
-    // private
-	// Garbage collection - uncache elements/purge listeners on orphaned elements
-	// so we don't hold a reference and cause the browser to retain them
-	function garbageCollect(){
-	    if(!Ext.enableGarbageCollector){
-	        clearInterval(El.collectorThreadId);
-	    } else {
-	        var eid,
-	            el,
-	            d,
-                o,
-                EC = Ext.elCache;
-	
-	        for(eid in EC){
-                if(!EC.hasOwnProperty(eid)) {
-                    continue;
-                }
-                o = EC[eid];
-                if(o.skipGC){
-	                continue;
-	            }
-	            el = o.el;
-	            d = el.dom;
-	            // -------------------------------------------------------
-	            // Determining what is garbage:
-	            // -------------------------------------------------------
-	            // !d
-	            // dom node is null, definitely garbage
-	            // -------------------------------------------------------
-	            // !d.parentNode
-	            // no parentNode == direct orphan, definitely garbage
-	            // -------------------------------------------------------
-	            // !d.offsetParent && !document.getElementById(eid)
-	            // display none elements have no offsetParent so we will
-	            // also try to look it up by it's id. However, check
-	            // offsetParent first so we don't do unneeded lookups.
-	            // This enables collection of elements that are not orphans
-	            // directly, but somewhere up the line they have an orphan
-	            // parent.
-	            // -------------------------------------------------------
-	            
-	            if(!d || !d.parentNode || (!d.offsetParent && !DOC.getElementById(eid))){
-	                if(Ext.enableListenerCollection){
-	                    Ext.EventManager.removeAll(d);
-	                }
-	                delete EC[eid];
-	            }
-	        
-            }
-	        // Cleanup IE COM Object Hash reference leaks 
-	        if (Ext.isIE) {
-	            var t = {};
-	            for (eid in EC) {
-                    if(EC.hasOwnProperty(eid)) {
-	                   t[eid] = EC[eid];
-                    }
-	            }
-	            Ext.elCache = Ext._documents[Ext.id(document)] = t;
-                t = null;
-	        }
-	    }
-	}
-    //Restart if enabled
-    if(Ext.enableGarbageCollector){
-	   El.collectorThreadId = setInterval(garbageCollect, 30000);
-    }
-
+   
     Ext.apply(ELD , {
         /**
          * Resolve the current document context of the passed Element
@@ -3338,7 +3276,7 @@
 	                    case 'load' : // Gecko, Opera, IE
 	                    case 'complete' :
                             var frame = this;
-	                        setTimeout( function(){frame._onDocLoaded(rstatus); }, 0);
+	                        this._frameAction && setTimeout( function(){frame._onDocLoaded(rstatus); }, .01);
                             this._frameAction = false;
 	                        break;
 	                    case 'error':

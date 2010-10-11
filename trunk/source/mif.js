@@ -1091,7 +1091,7 @@
 	                    case 'load' : // Gecko, Opera, IE
 	                    case 'complete' :
                             var frame = this;
-	                        setTimeout( function(){frame._onDocLoaded(rstatus); }, 0);
+	                        this._frameAction && setTimeout( function(){frame._onDocLoaded(rstatus); }, .01);
                             this._frameAction = false;
 	                        break;
 	                    case 'error':
