@@ -61,7 +61,7 @@
  
   //assert multidom support: REQUIRED for Ext 3 or higher!
   if(typeof ELD.getDocument != 'function'){
-     alert("MIF 2.1.4 requires multidom support" );
+     alert("MIF 2.1.5 requires multidom support" );
   }
   //assert Ext 3.1.1+ 
   if(!Ext.elCache || parseInt( Ext.version.replace(/\./g,''),10) < 311 ) {
