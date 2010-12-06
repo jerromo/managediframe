@@ -277,7 +277,7 @@
 
  /**
   * @class multidom
-  * @version 2.14
+  * @version 2.1.6
   * @license MIT
   * @author Doug Hendricks. Forum ID: <a href="http://extjs.com/forum/member.php?u=8730">hendricd</a>
   * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
@@ -2190,7 +2190,7 @@
  * This file is distributed on an AS IS BASIS WITHOUT ANY WARRANTY; without even
  * the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
  * ***********************************************************************************
- * @version 2.1.4
+ * @version 2.1.6
  * [For Ext 3.1.1 or higher only]
  *
  * License: ux.ManagedIFrame, ux.ManagedIFrame.Panel, ux.ManagedIFrame.Portlet, ux.ManagedIFrame.Window  
@@ -2246,7 +2246,7 @@
  
   //assert multidom support: REQUIRED for Ext 3 or higher!
   if(typeof ELD.getDocument != 'function'){
-     alert("MIF 2.1.4 requires multidom support" );
+     alert("MIF 2.1.6 requires multidom support" );
   }
   //assert Ext 3.1.1+ 
   if(!Ext.elCache || parseInt( Ext.version.replace(/\./g,''),10) < 311 ) {
@@ -2273,7 +2273,7 @@
     /**
      * @class Ext.ux.ManagedIFrame.Element
      * @extends Ext.Element
-     * @version 2.1.4 
+     * @version 2.1.6 
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a> 
      * @author Doug Hendricks. Forum ID: <a href="http://extjs.com/forum/member.php?u=8730">hendricd</a> 
      * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
@@ -2785,7 +2785,7 @@
                 this.hideMask(true);
                 
                 if(win){
-                    this.isReset= true;
+                    this.isReset= this._frameAction = true;
                     var cb = callback;
 	                O.addListener('_docload',
 	                  function(frame) {
@@ -3276,7 +3276,7 @@
 	                    case 'load' : // Gecko, Opera, IE
 	                    case 'complete' :
                             var frame = this;
-	                        this._frameAction && setTimeout( function(){frame._onDocLoaded(rstatus); }, .01);
+	                        frame._onDocLoaded(rstatus);
                             this._frameAction = false;
 	                        break;
 	                    case 'error':
@@ -3466,7 +3466,7 @@
                 
                 p.addClass("x-masked");
                 
-                this._mask = Ext.DomHelper.append(p, {cls: maskCls || "ux-mif-el-mask"} , true);
+                this._mask = Ext.DomHelper.append(p, {role: 'presentation', cls: maskCls || "ux-mif-el-mask"} , true);
                 this._mask.setDisplayed(true);
                 this._mask._agent = p;
                 
@@ -3513,6 +3513,7 @@
                      this.dom.parentNode,{
                          tag : 'img',
                          src : imgUrl|| Ext.BLANK_IMAGE_URL,
+                         role: 'presentation',
                          cls : this.shimCls ,
                          galleryimg : "no"
                     }, true)) ;
@@ -3665,7 +3666,7 @@
 
   /**
    * @class Ext.ux.ManagedIFrame.ComponentAdapter
-   * @version 2.1.4 
+   * @version 2.1.6 
    * @author Doug Hendricks. doug[always-At]theactivegroup.com
    * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
    * @copyright 2007-2010, Active Group, Inc.  All rights reserved.
@@ -3679,7 +3680,7 @@
    Ext.ux.ManagedIFrame.ComponentAdapter.prototype = {
        
         /** @property */
-        version : 2.14,
+        version : 2.16,
         
         /**
          * @cfg {String} defaultSrc the default src property assigned to the Managed Frame when the component is rendered.
@@ -3693,7 +3694,7 @@
          */
         unsupportedText : 'Inline frames are NOT enabled\/supported by your browser.',
         
-        hideMode   : !Ext.isIE && !!Ext.ux.plugin.VisibilityMode ? 'nosize' : 'display',
+        hideMode   : 'nosize', //!Ext.isIE && !!Ext.ux.plugin.VisibilityMode ? 'nosize' : 'display',
         
         animCollapse  : Ext.isIE ,
 
@@ -3705,6 +3706,18 @@
           *
           */
         disableMessaging : true, 
+        
+        /**
+        * @cfg {String} ariaCls ARIA class name added to the rendered IFRAME Element
+        * @default undefined
+        */
+        ariaCls  : undefined,
+        
+        /**
+        * @cfg {String} ariaRole ARIA role node attribute set on the rendered IFRAME Element
+        * @default undefined
+        */
+        ariaRole : undefined,
         
         /**
           * @cfg {Boolean} eventsFollowFrameLinks set true to propagate domready and documentloaded
@@ -4175,7 +4188,7 @@
   /**
    * @class Ext.ux.ManagedIFrame.Component
    * @extends Ext.BoxComponent
-   * @version 2.1.4 
+   * @version 2.1.6 
    * @author Doug Hendricks. doug[always-At]theactivegroup.com
    * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
    * @copyright 2007-2010, Active Group, Inc.  All rights reserved.
@@ -4188,18 +4201,30 @@
             
             ctype     : "Ext.ux.ManagedIFrame.Component",
             
+            /**
+	        * @cfg {String} ariaCls ARIA class name added to the rendered IFRAME Element
+	        * @default undefined
+	        */
+	        ariaCls  : undefined,
+	        
+	        /**
+	        * @cfg {String} ariaRole ARIA role node attribute set on the rendered IFRAME Element
+	        * @default undefined
+	        */
+	        ariaRole : undefined,
+            
             /** @private */
             initComponent : function() {
                
-                var C = {
-	                monitorResize : this.monitorResize || (this.monitorResize = !!this.fitToParent),
+                var C = {};
+	              /*  monitorResize : this.monitorResize || (this.monitorResize = !!this.fitToParent),
 	                plugins : (this.plugins ||[]).concat(
 	                    this.hideMode === 'nosize' && Ext.ux.plugin.VisibilityMode ? 
 		                    [new Ext.ux.plugin.VisibilityMode(
 		                        {hideMode :'nosize',
 		                         elements : ['bwrap']
 		                        })] : [] )
-                  };
+                  };*/
                   
                 MIF.Component.superclass.initComponent.call(
                   Ext.apply(this,
@@ -4244,7 +4269,13 @@
                         eventsFollowFrameLinks : Ext.value(this.eventsFollowFrameLinks ,true)
                     });
                     F.ownerCt.frameEl = F;
-                    F.addClass('ux-mif'); 
+                    
+                    /*
+                     * ARIA attribution support
+                     */
+                    F.addClass(['ux-mif', this.ariaCls]); 
+                    this.ariaRole && F.set({role : this.ariaRole}); 
+                    
                     if (this.loadMask) {
                         //resolve possible maskEl by Element name eg. 'body', 'bwrap', 'actionEl'
                         var mEl = this.loadMask.maskEl;
@@ -4266,8 +4297,6 @@
                         (this.relayTarget || this).relayEvents(F._observable, frameEvents.concat(this._msgTagHandlers || []));
                         
                     delete this.contentEl;
-                    
-                    //Template support for writable frames
                     
                  }
             },
@@ -4322,6 +4351,7 @@
                        
                     if (this.autoload) {
                        this.doAutoLoad();
+                     //Template support for writable frames
                     } else if(this.tpl && (this.frameData || this.data)) {
                        F.update(this.tpl.apply(this.frameData || this.data), true, resumeEvents);
                        delete this.frameData;
@@ -4379,6 +4409,8 @@
              xtype    : 'mif',
                ref    : 'mifChild',
             useShim   : true,
+              ariaCls : Ext.value(config.ariaCls , this.ariaCls),
+             ariaRole : Ext.value(config.ariaRole , this.ariaRole),
                   tpl : Ext.value(config.tpl , this.tpl),
            autoScroll : Ext.value(config.autoScroll , this.autoScroll),
           defaultSrc  : Ext.value(config.defaultSrc , this.defaultSrc),
@@ -4401,7 +4433,7 @@
   /**
    * @class Ext.ux.ManagedIFrame.Panel
    * @extends Ext.Panel
-   * @version 2.1.4 
+   * @version 2.1.6 
    * @author Doug Hendricks. doug[always-At]theactivegroup.com
    * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
    * @copyright 2007-2010, Active Group, Inc.  All rights reserved.
@@ -4428,7 +4460,7 @@
     /**
      * @class Ext.ux.ManagedIFrame.Portlet
      * @extends Ext.ux.ManagedIFrame.Panel
-     * @version 2.1.4 
+     * @version 2.1.6 
      * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a> 
      * @author Doug Hendricks. Forum ID: <a href="http://extjs.com/forum/member.php?u=8730">hendricd</a> 
@@ -4456,7 +4488,7 @@
   /**
    * @class Ext.ux.ManagedIFrame.Window
    * @extends Ext.Window
-   * @version 2.1.4 
+   * @version 2.1.6 
    * @author Doug Hendricks. 
    * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
    * @copyright 2007-2010, Active Group, Inc.  All rights reserved.
@@ -4484,7 +4516,7 @@
     /**
      * @class Ext.ux.ManagedIFrame.Updater
      * @extends Ext.Updater
-     * @version 2.1.4 
+     * @version 2.1.6 
      * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a> 
      * @author Doug Hendricks. Forum ID: <a href="http://extjs.com/forum/member.php?u=8730">hendricd</a> 
@@ -4533,7 +4565,7 @@
     /**
      * @class Ext.ux.ManagedIFrame.CSS
      * Stylesheet interface object
-     * @version 2.1.4 
+     * @version 2.1.6 
      * @author Doug Hendricks. doug[always-At]theactivegroup.com
      * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
      * @copyright 2007-2010, Active Group, Inc.  All rights reserved.
@@ -4772,7 +4804,7 @@
 
     /**
      * @class Ext.ux.ManagedIFrame.Manager
-     * @version 2.1.4 
+     * @version 2.1.6 
 	 * @author Doug Hendricks. doug[always-At]theactivegroup.com
 	 * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
 	 * @copyright 2007-2010, Active Group, Inc.  All rights reserved.
@@ -4945,7 +4977,7 @@
      * Internal Error class for ManagedIFrame Components
 	 * @class Ext.ux.ManagedIFrame.Error
      * @extends Ext.Error
-     * @version 2.1.4 
+     * @version 2.1.6 
      * @donate <a target="tag_donate" href="http://donate.theactivegroup.com"><img border="0" src="http://www.paypal.com/en_US/i/btn/x-click-butcc-donate.gif" border="0" alt="Make a donation to support ongoing development"></a>
      * @license <a href="http://www.gnu.org/licenses/gpl.html">GPL 3.0</a> 
      * @author Doug Hendricks. Forum ID: <a href="http://extjs.com/forum/member.php?u=8730">hendricd</a> 
