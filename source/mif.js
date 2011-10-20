@@ -548,6 +548,8 @@
              *            frame document has been fully loaded.
              * @param {Object} scope (Optional) scope by which the callback function is
              *            invoked.
+             * Note: This method should only be considered for same-origin frames, as the location object
+            *        will NOT be accessible for a foreign domain.
              *
              */
             setLocation : function(url, discardUrl, callback, scope) {
@@ -587,11 +589,14 @@
              */
             reset : function(src, callback, scope) {
 
-                this._unHook();
+
                 var loadMaskOff = false,
                     s = src,
                     win = this.getWindow(),
-                    O = this._observable;
+                    O = this._observable,
+                    writable = this.domWritable();
+
+                this._unHook();
 
                 if(this.loadMask){
                     loadMaskOff = this.loadMask.disabled;
@@ -613,7 +618,11 @@
 
                     Ext.isFunction(s) && ( s = src());
                     s = this._targetURI = Ext.isEmpty(s, true)? this.resetUrl: s;
-                    win.location ? (win.location.href = s) : O.fireEvent('_docload', this);
+                    if(writable) {
+                        win.location.replace(s); //preserve history if possible
+                    } else {
+                       this.dom.src = s;
+                    }
                 }
 
                 return this;
